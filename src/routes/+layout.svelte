@@ -9,9 +9,16 @@
   let mounted = false;
 
   // Auth pages are a bare, centered card — no rail.
-  $: bare = $page.url.pathname === '/login' || $page.url.pathname === '/signup';
+  const BARE_PAGES = ['/login', '/signup', '/forgot-password', '/reset-password'];
+  $: bare = BARE_PAGES.includes($page.url.pathname);
 
   onMount(() => {
+    // If Supabase sent a reset link to the Site URL instead of /reset-password
+    // (APP_URL unset or not on the redirect allow list), hand it over.
+    if (location.pathname !== '/reset-password' && /[#&]type=recovery(&|$)/.test(location.hash)) {
+      location.replace(`/reset-password${location.hash}`);
+      return;
+    }
     mounted = true;
     // Resolve the session exactly once; every page reads the store afterwards.
     (async () => {

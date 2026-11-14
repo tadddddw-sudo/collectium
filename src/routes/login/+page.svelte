@@ -18,7 +18,9 @@
       const profile = data.profile ?? data.user;
       userProfile.set(profile);
       const next = $page.url.searchParams.get('next');
-      const destination = next || `/profile?u=${encodeURIComponent(profile.username)}`;
+      // Only follow same-site paths ("/x"), never "//host" or "https://host".
+      const safeNext = next && /^\/(?![/\\])/.test(next) ? next : null;
+      const destination = safeNext || `/profile?u=${encodeURIComponent(profile.username)}`;
       goto(destination, { replaceState: true });
     } catch (err) {
       error = err.message || 'Could not sign in.';
@@ -68,6 +70,7 @@
         required
         bind:value={password}
       />
+      <a class="forgot" href="/forgot-password">Forgot your password?</a>
     </div>
 
     <button class="btn btn-block" type="submit" disabled={busy}>
@@ -102,6 +105,12 @@
 
   form .notice {
     margin-bottom: 0.9rem;
+  }
+
+  .forgot {
+    display: inline-block;
+    margin-top: 0.45rem;
+    font-size: 0.8rem;
   }
 
   .switch {

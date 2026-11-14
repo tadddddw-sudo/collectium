@@ -67,6 +67,9 @@
           autocomplete="username"
           placeholder="cool_collector"
           minlength="3"
+          maxlength="30"
+          pattern="[A-Za-z0-9_.\-]+"
+          title="3–30 characters: letters, numbers, dots, dashes or underscores"
           required
           bind:value={username}
         />

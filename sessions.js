@@ -5,7 +5,7 @@
  * clients. The SPA uses an httpOnly cookie instead, so no token is ever stored
  * in localStorage.
  */
-import { supabase, isAuthError } from './supabaseClient.js';
+import { createIsolatedClient, isAuthError } from './supabaseClient.js';
 
 export const ACCESS_COOKIE = 'collectium_access';
 export const REFRESH_COOKIE = 'collectium_refresh';
@@ -18,8 +18,9 @@ function cookieOptions(maxAgeSeconds) {
     httpOnly: true,
     sameSite: 'lax',
     path: '/',
-    // localhost is plain http; only mark Secure when actually served over https.
-    secure: process.env.NODE_ENV === 'production' && process.env.COOKIE_SECURE === 'true',
+    // Secure by default in production. localhost is plain http, so development
+    // leaves it off; set COOKIE_SECURE=false only for an http-only deployment.
+    secure: process.env.NODE_ENV === 'production' && process.env.COOKIE_SECURE !== 'false',
     // Express expects milliseconds here, not seconds.
     maxAge: maxAgeSeconds * 1000,
   };
@@ -32,7 +33,12 @@ export function parseCookies(header = '') {
     if (idx < 0) continue;
     const key = part.slice(0, idx).trim();
     if (!key) continue;
-    out[key] = decodeURIComponent(part.slice(idx + 1).trim());
+    const raw = part.slice(idx + 1).trim();
+    try {
+      out[key] = decodeURIComponent(raw);
+    } catch {
+      out[key] = raw; // malformed %-escape from some other cookie; don't 500 the request
+    }
   }
   return out;
 }
@@ -59,13 +65,18 @@ export function sendAuthError(res, error) {
   return res.status(400).json({ error: error.message });
 }
 
-function tokenExpiryMs(token) {
+/** Decoded JWT payload, or null. Does NOT verify the signature: only use on a token Supabase has already validated. */
+export function decodeJwtPayload(token) {
   try {
-    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf8'));
-    return Number(payload.exp) * 1000;
+    return JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf8'));
   } catch {
-    return 0;
+    return null;
   }
+}
+
+function tokenExpiryMs(token) {
+  const exp = Number(decodeJwtPayload(token)?.exp);
+  return Number.isFinite(exp) ? exp * 1000 : 0;
 }
 
 function isExpired(token) {
@@ -89,7 +100,8 @@ export async function attachSession(req, res, next) {
     let token = headerToken || cookies[ACCESS_COOKIE] || null;
 
     if (!headerToken && cookies[REFRESH_COOKIE] && (!token || isExpired(token))) {
-      const { data, error } = await supabase.auth.refreshSession({
+      // Isolated client: refreshing on the shared client would make it act as this user.
+      const { data, error } = await createIsolatedClient().auth.refreshSession({
         refresh_token: cookies[REFRESH_COOKIE],
       });
       if (!error && data?.session) {

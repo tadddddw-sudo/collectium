@@ -1,9 +1,11 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import fs from 'node:fs';
 import { attachSession } from './sessions.js';
+import { apiLimiter } from './rateLimits.js';
 import authRoutes from './routes/auth.js';
 import profileRoutes from './routes/profiles.js';
 import collectionRoutes from './routes/collections.js';
@@ -14,15 +16,36 @@ const dist = path.join(here, 'dist');
 const hasBuild = fs.existsSync(path.join(dist, 'index.html'));
 const app = express();
 
-// credentials: true lets the httpOnly session cookie flow when the client is on
-// another origin (the Vite dev server proxies /api, so production is same-origin).
+// Behind a reverse proxy (nginx, a PaaS router, Cloudflare...) set TRUST_PROXY
+// to the number of proxy hops, e.g. TRUST_PROXY=1, so req.ip is the visitor's
+// address and rate limits apply per visitor. Leave it unset when Node is
+// exposed directly, or clients could spoof X-Forwarded-For.
+if (process.env.TRUST_PROXY) {
+  const hops = Number(process.env.TRUST_PROXY);
+  app.set('trust proxy', Number.isInteger(hops) ? hops : process.env.TRUST_PROXY);
+}
+
+// Security headers (HSTS, nosniff, frame protection, referrer policy, no X-Powered-By).
+// CSP is off: the image tools load @huggingface/transformers and its WASM/model
+// files from CDNs at runtime, so a policy needs testing against that flow first.
+app.use(helmet({ contentSecurityPolicy: false }));
+
+// The SPA is same-origin (Express serves it; the Vite dev server proxies /api),
+// so it needs no CORS at all. Only origins listed in CORS_ORIGINS
+// (comma-separated, exact match) may make credentialed cross-origin requests.
+const corsOrigins = (process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
 app.use(
   cors({
-    origin: (origin, callback) => callback(null, origin || false),
+    origin: (origin, callback) => callback(null, Boolean(origin) && corsOrigins.includes(origin)),
     credentials: true,
   })
 );
-app.use(express.json());
+app.use(express.json({ limit: '100kb' }));
+
+app.use('/api', apiLimiter);
 
 // Resolve the bearer header or the session cookie before any route runs.
 app.use(attachSession);
@@ -41,6 +64,23 @@ app.use('/api/items', itemRoutes);
 // Any other /api path is a real 404, not the SPA fallback.
 app.use('/api', (req, res) => {
   res.status(404).json({ error: 'Not found' });
+});
+
+// JSON errors for the API instead of Express's default HTML page, which
+// includes a stack trace outside production.
+// eslint-disable-next-line no-unused-vars
+app.use('/api', (err, req, res, next) => {
+  if (err.type === 'entity.parse.failed') {
+    return res.status(400).json({ error: 'Request body is not valid JSON.' });
+  }
+  if (err.type === 'entity.too.large' || err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(413).json({ error: 'Request is too large.' });
+  }
+  if (err.name === 'MulterError') {
+    return res.status(400).json({ error: 'Invalid upload.' });
+  }
+  console.error(`[${req.method} ${req.originalUrl}]`, err);
+  res.status(500).json({ error: 'Something went wrong. Please try again.' });
 });
 
 if (hasBuild) {
