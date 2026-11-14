@@ -16,9 +16,24 @@ async function loadProfile(accessToken, userId) {
   return userSupabase.from('profiles').select(PROFILE_COLUMNS).eq('id', userId).single();
 }
 
+// Password policy: 8+ characters, a digit, an uppercase letter and a special character.
+// Keep in sync with src/lib/password.js (used for the signup form hints).
+function passwordPolicyError(password) {
+  if (typeof password !== 'string' || password.length < 8) {
+    return 'Password must be at least 8 characters long.';
+  }
+  if (!/[0-9]/.test(password)) return 'Password must contain a number.';
+  if (!/[A-Z]/.test(password)) return 'Password must contain an uppercase letter.';
+  if (!/[^A-Za-z0-9\s]/.test(password)) return 'Password must contain a special character.';
+  return null;
+}
+
 // POST /api/auth/signup
 router.post('/signup', async (req, res) => {
   const { username, email, password } = req.body;
+
+  const passwordError = passwordPolicyError(password);
+  if (passwordError) return res.status(400).json({ error: passwordError });
 
   const { data: existing } = await supabase
     .from('profiles')
