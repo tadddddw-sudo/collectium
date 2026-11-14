@@ -85,11 +85,11 @@
     /* One carved channel holding the input and its button. */
     padding: 5px;
     border-radius: var(--r-md);
-    border: 1px solid rgba(0, 0, 0, 0.6);
-    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--well-border);
+    background: var(--well-bg);
     box-shadow:
-      inset 0px 3px 6px rgba(0, 0, 0, 0.5),
-      0px 1px 0px rgba(255, 255, 255, 0.1);
+      var(--shadow-carve),
+      var(--edge-lip);
     transition:
       border-color var(--transition-smooth),
       box-shadow var(--transition-smooth);
@@ -111,10 +111,10 @@
   }
 
   .lookup-row:focus-within {
-    border-color: var(--accent-cyan);
+    border-color: var(--accent);
     box-shadow:
-      inset 0px 3px 6px rgba(0, 0, 0, 0.5),
-      0px 0px 8px rgba(0, 229, 255, 0.4);
+      var(--shadow-carve),
+      0px 0px 8px rgb(var(--accent-rgb) / 0.4);
   }
 
   .at {

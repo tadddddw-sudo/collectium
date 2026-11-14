@@ -66,14 +66,14 @@
     /* Tactile Aero surface; the sheen lives in the background so it never
        sits over the thumbnail. */
     border-radius: var(--r-lg);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--line);
     background:
       linear-gradient(to bottom, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 50%),
       var(--bg-panel);
     box-shadow:
       var(--shadow-deep),
-      inset 0px 1px 0px rgba(255, 255, 255, 0.4),
-      inset 0px -1px 0px rgba(0, 0, 0, 0.5);
+      var(--edge-spec),
+      var(--edge-ao);
     color: inherit;
     cursor: pointer;
     transition: all var(--transition-smooth);
@@ -81,14 +81,14 @@
 
   /* Lifting toward the light: longer shadow, brighter rim, faint cyan glint. */
   .row:hover {
-    border-color: rgba(0, 229, 255, 0.38);
+    border-color: rgb(var(--accent-rgb) / 0.38);
     transform: translateY(-2px);
     box-shadow:
       0px 16px 32px rgba(0, 0, 0, 0.72),
       0px 3px 6px rgba(0, 0, 0, 0.5),
-      0px 0px 14px rgba(0, 229, 255, 0.18),
+      0px 0px 14px rgb(var(--accent-rgb) / 0.18),
       inset 0px 1px 0px rgba(255, 255, 255, 0.5),
-      inset 0px -1px 0px rgba(0, 0, 0, 0.5);
+      var(--edge-ao);
   }
 
   .row:active {
@@ -96,7 +96,7 @@
     box-shadow:
       0px 4px 10px rgba(0, 0, 0, 0.6),
       inset 0px 1px 0px rgba(255, 255, 255, 0.3),
-      inset 0px -1px 0px rgba(0, 0, 0, 0.5);
+      var(--edge-ao);
   }
 
   .thumb {
@@ -107,13 +107,13 @@
     /* carved display recess */
     border-radius: var(--r-md);
     overflow: hidden;
-    border: 1px solid rgba(0, 0, 0, 0.6);
+    border: 1px solid var(--well-border);
     background:
-      radial-gradient(60% 60% at 50% 100%, rgba(0, 229, 255, 0.08), transparent 70%),
-      rgba(0, 0, 0, 0.3);
+      radial-gradient(60% 60% at 50% 100%, rgb(var(--accent-rgb) / 0.08), transparent 70%),
+      var(--well-bg);
     box-shadow:
-      inset 0px 3px 6px rgba(0, 0, 0, 0.5),
-      0px 1px 0px rgba(255, 255, 255, 0.1);
+      var(--shadow-carve),
+      var(--edge-lip);
     padding: 0.55rem;
   }
 
@@ -127,7 +127,7 @@
   }
 
   .glyph {
-    color: #52627a;
+    color: var(--text-dim);
   }
 
   .glyph svg {
@@ -159,8 +159,8 @@
     font-size: 0.66rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--accent-cyan);
-    text-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
+    color: var(--accent);
+    text-shadow: 0 0 10px rgb(var(--accent-rgb) / 0.5);
   }
 
   .title {
@@ -197,8 +197,8 @@
     height: 30px;
     border-radius: 50%;
     color: var(--text-muted);
-    border: 1px solid rgba(0, 0, 0, 0.5);
-    background: linear-gradient(180deg, #3a4659 0%, #232c3a 100%);
+    border: 1px solid var(--well-border);
+    background: var(--knob-bg);
     box-shadow:
       var(--shadow-near),
       inset 0 1px 0 rgba(255, 255, 255, 0.3),
@@ -212,10 +212,10 @@
   }
 
   .row:hover .chevron {
-    color: var(--accent-cyan);
+    color: var(--accent);
     box-shadow:
       var(--shadow-near),
-      0 0 8px rgba(0, 229, 255, 0.35),
+      0 0 8px rgb(var(--accent-rgb) / 0.35),
       inset 0 1px 0 rgba(255, 255, 255, 0.36),
       inset 0 -1px 0 rgba(0, 0, 0, 0.4);
   }

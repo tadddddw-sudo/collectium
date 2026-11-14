@@ -39,7 +39,7 @@ gutter**, **~8–14 px radii**, **56 px compact rows**, **240 px feature slabs**
   collection rows. The Figma's stacked 240/152/146 blocks are preserved as
   proportions.
 - **Collections** (`lib/components/CollectionCard.svelte`): the 768×240 row with
-  a left thumbnail, cyan data badge, title, count, and a chevron — used for both
+  a left thumbnail, amber data badge, title, count, and a chevron — used for both
   binders and cases (the `my collections` / `search results` frames).
 - **Settings** (`routes/settings`): the `setting group` slabs, reusing the same
   two-column label/value rhythm.
@@ -62,18 +62,23 @@ gutter**, **~8–14 px radii**, **56 px compact rows**, **240 px feature slabs**
    inventing data. The rail therefore exposes only routes that actually work.
    `search results` is represented by the handle lookup on Home, which resolves
    to a real profile.
-2. **`Featured collections` is derived**, not authored — the backend has no
-   featured flag, so the chips link to the collector's collections in order.
-3. **No banner upload / profile editing.** The Figma has edit dots; the API has
-   no profile update endpoint, so those controls are omitted rather than stubbed.
-4. **Colour comes entirely from `Styles.md`.** The Figma is greyscale, so the
-   palette is the dark Aero system (cyan/blue accents, amber brand mark).
+2. **`Featured collections` are chosen by the owner** (up to three, stored in
+   `profiles.featured_collection_ids`). With none chosen, the first three
+   collections are shown.
+3. **Profile editing replaces the Figma's edit dots** with explicit buttons:
+   "Edit banner", "Edit profile", "Edit bio" and "Change" (featured). They all
+   open the same profile editor, except "Change".
+4. **Colour follows the logo.** The accent is the amber of the isometric C
+   (`--accent-rgb` in `app.css`), on a dark charcoal theme and a warm light
+   theme switched with the sun/moon button in the rail.
 5. **Phones use a bottom bar.** The Figma only defines 1440 px desktop frames;
    the rail folds to a 44 px bottom nav below 720 px.
 
 ## Where the styling lives
 
-`src/app.css` holds the tokens and primitives — `--bg-base`, `--accent-cyan`,
+`src/app.css` holds the tokens and primitives — `--bg-base`, `--accent`,
+`--accent-rgb`, the themed surfaces (`--well-bg`, `--rail-bg`, `--modal-bg`…,
+overridden under `[data-theme='light']`),
 `--gloss-top`, `--shadow-deep`, `.aero`, `.aero-solid`, `.aero-well`, `.btn`,
 `.btn-ghost`, `.btn-danger`, `.input`, `.chip`, `.modal`. Component `<style>`
 blocks only compose those primitives, so changing the skin is a one-file job.

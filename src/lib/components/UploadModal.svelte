@@ -470,11 +470,11 @@
     padding: 3px;
     margin-bottom: 1rem;
     border-radius: var(--r-lg);
-    border: 1px solid rgba(0, 0, 0, 0.6);
-    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--well-border);
+    background: var(--well-bg);
     box-shadow:
-      inset 0px 3px 6px rgba(0, 0, 0, 0.5),
-      0px 1px 0px rgba(255, 255, 255, 0.1);
+      var(--shadow-carve),
+      var(--edge-lip);
   }
 
   .mode {
@@ -497,13 +497,13 @@
 
   /* The selected tab rises out of the groove as a lit glossy key. */
   .mode.active {
-    color: #fff;
-    border-color: #0033aa;
+    color: var(--on-accent);
+    border-color: var(--accent-border);
     background: var(--accent-gradient);
-    text-shadow: var(--text-glow);
+    text-shadow: var(--on-accent-shadow);
     box-shadow:
       0px 2px 4px rgba(0, 0, 0, 0.4),
-      0px 0px 8px rgba(0, 229, 255, 0.3),
+      0px 0px 8px rgb(var(--accent-rgb) / 0.3),
       inset 0px 2px 3px rgba(255, 255, 255, 0.6),
       inset 0px -2px 3px rgba(0, 0, 0, 0.4);
   }
@@ -511,8 +511,8 @@
   .status {
     margin-top: 0.4rem;
     font-size: 0.76rem;
-    color: var(--accent-cyan);
-    text-shadow: 0 0 10px rgba(0, 229, 255, 0.35);
+    color: var(--accent);
+    text-shadow: 0 0 10px rgb(var(--accent-rgb) / 0.35);
   }
 
   .checker {
@@ -527,7 +527,7 @@
     padding: 0.5rem;
     margin-bottom: 1rem;
     border-radius: 8px;
-    border: 1px solid rgba(0, 0, 0, 0.6);
+    border: 1px solid var(--well-border);
     box-shadow: inset 0 2px 7px rgba(0, 0, 0, 0.55);
   }
 
@@ -556,14 +556,14 @@
     display: block;
     max-width: 100%;
     margin: 0 auto;
-    border: 2px dashed rgba(0, 229, 255, 0.65);
+    border: 2px dashed rgb(var(--accent-rgb) / 0.65);
     border-radius: 8px;
     cursor: crosshair;
     touch-action: none;
     background:
-      repeating-conic-gradient(rgba(255, 255, 255, 0.05) 0% 25%, transparent 0% 50%) 50% / 18px 18px,
-      #101722;
-    box-shadow: inset 0 3px 9px rgba(0, 0, 0, 0.6), 0 0 14px rgba(0, 229, 255, 0.12);
+      repeating-conic-gradient(rgba(128, 128, 128, 0.12) 0% 25%, transparent 0% 50%) 50% / 18px 18px,
+      var(--bg-deep);
+    box-shadow: inset 0 3px 9px rgba(0, 0, 0, 0.6), 0 0 14px rgb(var(--accent-rgb) / 0.12);
   }
 
   .square-canvas {
@@ -574,7 +574,7 @@
     aspect-ratio: 1;
     margin: 0.4rem auto;
     border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.14);
+    border: 1px solid var(--line);
     cursor: grab;
     touch-action: none;
     box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.7), 0 8px 18px rgba(0, 0, 0, 0.5);
@@ -619,7 +619,7 @@
     margin: 0 auto;
     padding: 6px;
     border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--line);
   }
 
   .zoom {
@@ -638,6 +638,6 @@
 
   .zoom-value {
     min-width: 2.6rem;
-    color: var(--accent-cyan);
+    color: var(--accent);
   }
 </style>
