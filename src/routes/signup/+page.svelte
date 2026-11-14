@@ -10,6 +10,7 @@
   let acceptedTerms = false;
   let error = '';
   let success = false;
+  let needsConfirmation = false;
   let busy = false;
   let timer = null;
 
@@ -30,9 +31,13 @@
     }
     busy = true;
     try {
-      await CollectiumAPI.signup(username.trim(), email, password, acceptedTerms);
+      const data = await CollectiumAPI.signup(username.trim(), email, password, acceptedTerms);
       success = true;
-      timer = setTimeout(() => goto('/login', { replaceState: true }), 1200);
+      needsConfirmation = data.needs_confirmation === true;
+      // With email confirmation on, stay here so the "check your inbox" note is read.
+      if (!needsConfirmation) {
+        timer = setTimeout(() => goto('/login', { replaceState: true }), 1200);
+      }
     } catch (err) {
       error = err.message || 'Could not create the account.';
       busy = false;
@@ -49,7 +54,12 @@
     <p class="sub">Start a binder or a display case in a minute.</p>
   </header>
 
-  {#if success}
+  {#if success && needsConfirmation}
+    <p class="notice notice-success" role="status">
+      Almost done! We sent a confirmation link to {email}. Open it to activate your account, then log in.
+    </p>
+    <a class="btn btn-block" href="/login">Go to log in</a>
+  {:else if success}
     <p class="notice notice-success" role="status">Account created! Redirecting to log in…</p>
   {:else}
     <form on:submit={submit}>
@@ -185,7 +195,7 @@
 
   .consent input {
     margin-top: 0.15rem;
-    accent-color: var(--accent-cyan);
+    accent-color: var(--accent);
   }
 
   .switch {

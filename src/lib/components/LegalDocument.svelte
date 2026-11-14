@@ -54,20 +54,20 @@
     font-size: 0.84em;
     padding: 0.05rem 0.3rem;
     border-radius: 4px;
-    background: rgba(0, 0, 0, 0.3);
+    background: var(--well-bg);
   }
 
   .legal :global(blockquote) {
     margin: 1rem 0;
     padding: 0.6rem 0.9rem;
-    border-left: 3px solid var(--accent-cyan);
-    background: rgba(0, 229, 255, 0.06);
+    border-left: 3px solid var(--accent);
+    background: rgb(var(--accent-rgb) / 0.06);
     border-radius: 4px;
   }
 
   .legal :global(hr) {
     border: 0;
-    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    border-top: 1px solid var(--line);
     margin: 1.4rem 0;
   }
 </style>

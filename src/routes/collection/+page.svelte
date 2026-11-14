@@ -1,11 +1,12 @@
 <script>
   import { onMount } from 'svelte';
+  import { goto } from '$app/navigation';
   import { page as pageStore } from '$app/stores';
   import BinderGrid from '$lib/components/BinderGrid.svelte';
   import CaseStage from '$lib/components/CaseStage.svelte';
   import ItemModal from '$lib/components/ItemModal.svelte';
   import UploadModal from '$lib/components/UploadModal.svelte';
-  import LayoutCustomizer from '$lib/components/LayoutCustomizer.svelte';
+  import CollectionEditModal from '$lib/components/CollectionEditModal.svelte';
   import { CollectiumAPI } from '$lib/apiClient.js';
   import { userProfile, waitForAuth } from '$lib/stores.js';
   import { handleAuthFailure } from '$lib/session.js';
@@ -20,8 +21,10 @@
   let currentItem = null; // ItemModal
   let uploadOpen = false; // UploadModal
   let uploadSlot = null; // null = display case, number = binder slot
-  let customizerOpen = false;
+  let editOpen = false;
   let actionError = '';
+  let itemSaving = false;
+  let itemSaveError = '';
 
   let collectionId = '';
 
@@ -38,6 +41,7 @@
       title: raw.title,
       subtitle: raw.description || '',
       type: raw.type,
+      isPublic: raw.is_public !== false,
       user_id: raw.user_id,
       profiles: raw.profiles,
       layout: {
@@ -123,7 +127,7 @@
         currentItem = null;
         uploadOpen = false;
         uploadSlot = null;
-        customizerOpen = false;
+        editOpen = false;
         actionError = '';
         reloadCollection()
           .then(openDeepLinkedItem)
@@ -200,30 +204,40 @@
     }
   }
 
-  async function saveLayout(event) {
-    const next = event.detail;
+  async function onCollectionSaved(event) {
+    const { hidden } = event.detail;
+    editOpen = false;
     actionError = '';
-    const total = next.pages * next.rows * next.cols;
-    const hidden = collection.items.filter((it) => it.slot != null && it.slot >= total).length;
-
     try {
-      await CollectiumAPI.updateCollection(collection.id, {
-        layout_config: {
-          pages: next.pages,
-          rows: next.rows,
-          cols: next.cols,
-          show_grid: next.showGrid,
-        },
-      });
-
       // Re-normalize so slot indexes are recomputed against the new rows × cols.
       await reloadCollection();
       if (hidden) {
         actionError = `${hidden} item${hidden === 1 ? '' : 's'} now fall outside the layout.`;
       }
     } catch (err) {
+      actionError = err.message || 'Saved, but the collection could not reload.';
+    }
+  }
+
+  function onCollectionDeleted() {
+    editOpen = false;
+    const owner = collection?.profiles?.username;
+    goto(owner ? `/profile?u=${encodeURIComponent(owner)}` : '/', { replaceState: true });
+  }
+
+  async function onUpdateItem(event) {
+    const { item, name, description } = event.detail;
+    itemSaving = true;
+    itemSaveError = '';
+    try {
+      await CollectiumAPI.updateItem(item.id, { name, description });
+      await reloadCollection();
+      currentItem = collection.items.find((it) => it.id === item.id) || null;
+    } catch (err) {
       if (handleAuthFailure(err)) return;
-      actionError = err.message || 'Could not save the layout.';
+      itemSaveError = err.message || 'Could not save the item.';
+    } finally {
+      itemSaving = false;
     }
   }
 
@@ -259,16 +273,9 @@
 
       {#if isOwner}
         <div class="owner-tools">
-          {#if collection.type === 'binder'}
-            <button
-              class="btn btn-ghost btn-sm"
-              type="button"
-              aria-expanded={customizerOpen}
-              on:click={() => (customizerOpen = !customizerOpen)}
-            >
-              Layout
-            </button>
-          {/if}
+          <button class="btn btn-ghost" type="button" on:click={() => (editOpen = true)}>
+            Edit {collection.type === 'binder' ? 'binder' : 'case'}
+          </button>
           <button class="btn" type="button" on:click={() => openUpload(null)}>{addLabel}</button>
         </div>
       {/if}
@@ -278,12 +285,11 @@
       <p class="notice notice-error" role="alert">{actionError}</p>
     {/if}
 
+    {#if isOwner && !collection.isPublic}
+      <p class="notice notice-info private-note">Private: only you can see this collection.</p>
+    {/if}
+
     {#if collection.type === 'binder'}
-      {#if isOwner}
-        <div class="customizer-row">
-          <LayoutCustomizer layout={collection.layout} open={customizerOpen} on:save={saveLayout} />
-        </div>
-      {/if}
       <BinderGrid
         {collection}
         {page}
@@ -320,8 +326,23 @@
     item={currentItem}
     {collection}
     {isOwner}
-    on:close={() => (currentItem = null)}
+    saving={itemSaving}
+    saveError={itemSaveError}
+    on:close={() => {
+      currentItem = null;
+      itemSaveError = '';
+    }}
     on:delete={onDeleteItem}
+    on:update={onUpdateItem}
+  />
+{/if}
+
+{#if editOpen && collection && isOwner}
+  <CollectionEditModal
+    {collection}
+    on:close={() => (editOpen = false)}
+    on:saved={onCollectionSaved}
+    on:deleted={onCollectionDeleted}
   />
 {/if}
 
@@ -355,7 +376,7 @@
   }
 
   .back:hover {
-    color: var(--accent-cyan);
+    color: var(--accent);
     text-decoration: none;
   }
 
@@ -378,10 +399,8 @@
     flex-wrap: wrap;
   }
 
-  .customizer-row {
-    display: flex;
-    justify-content: flex-end;
-    margin-bottom: 0.6rem;
+  .private-note {
+    margin-bottom: 0.8rem;
   }
 
   .case-hint {

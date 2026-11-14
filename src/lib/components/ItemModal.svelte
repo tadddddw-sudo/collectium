@@ -1,6 +1,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { buildItemUrl, renderQrToDataUrl } from '$lib/qr.js';
+  import ZoomViewer from './ZoomViewer.svelte';
 
   export let item;
   export let collection;
@@ -13,6 +14,32 @@
   let qrSrc = '';
   let copied = false;
   let deleting = false;
+
+  // Owner editing of the item's name and description.
+  export let saving = false;
+  export let saveError = '';
+  let editing = false;
+  let editName = '';
+  let editDesc = '';
+
+  function startEdit() {
+    editName = item.name || '';
+    editDesc = item.desc || '';
+    editing = true;
+  }
+
+  function saveEdit(event) {
+    event.preventDefault();
+    if (!editName.trim()) return;
+    dispatch('update', { item, name: editName.trim(), description: editDesc.trim() });
+  }
+
+  // The parent swaps in the saved item; leave edit mode once the save lands.
+  let lastItem = item;
+  $: if (item !== lastItem) {
+    lastItem = item;
+    editing = false;
+  }
 
   $: loadQr(shareUrl);
 
@@ -50,13 +77,31 @@
   <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="item-title">
     <button class="modal-close" type="button" aria-label="Close" on:click={close}>✕</button>
 
-    <div class="hero">
-      <img src={item.img} alt={item.name} />
-    </div>
+    <ZoomViewer src={item.img} alt={item.name} />
 
-    <h2 id="item-title">{item.name}</h2>
-    {#if item.desc}
-      <p class="desc">{item.desc}</p>
+    {#if editing}
+      <form class="edit" on:submit={saveEdit}>
+        {#if saveError}
+          <p class="notice notice-error" role="alert">{saveError}</p>
+        {/if}
+        <div class="field">
+          <label for="item-name">Name</label>
+          <input class="input" id="item-name" required maxlength="120" bind:value={editName} />
+        </div>
+        <div class="field">
+          <label for="item-desc">Description</label>
+          <textarea class="input" id="item-desc" rows="3" maxlength="2000" bind:value={editDesc}></textarea>
+        </div>
+        <div class="cluster edit-actions">
+          <button class="btn btn-ghost btn-sm" type="button" on:click={() => (editing = false)} disabled={saving}>Cancel</button>
+          <button class="btn btn-sm" type="submit" disabled={saving || !editName.trim()}>{saving ? 'Saving…' : 'Save'}</button>
+        </div>
+      </form>
+    {:else}
+      <h2 id="item-title">{item.name}</h2>
+      {#if item.desc}
+        <p class="desc">{item.desc}</p>
+      {/if}
     {/if}
 
     {#if qrSrc}
@@ -72,6 +117,9 @@
 
     {#if isOwner}
       <div class="modal-actions">
+        {#if !editing}
+          <button class="btn btn-ghost" type="button" on:click={startEdit}>Edit details</button>
+        {/if}
         <button class="btn btn-danger" type="button" on:click={confirmDelete} disabled={deleting}>
           {deleting ? 'Deleting…' : 'Delete item'}
         </button>
@@ -85,36 +133,29 @@
     text-align: center;
   }
 
-  /* Gallery hero: a sunken lightbox with a checkerboard "transparency" floor. */
-  .hero {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 160px;
-    padding: 0.8rem;
-    margin-bottom: 0.9rem;
-    border-radius: 8px;
-    border: 1px solid rgba(0, 0, 0, 0.6);
-    background:
-      repeating-conic-gradient(rgba(255, 255, 255, 0.045) 0% 25%, transparent 0% 50%) 50% / 18px 18px,
-      radial-gradient(70% 70% at 50% 100%, rgba(0, 229, 255, 0.1), transparent 70%),
-      linear-gradient(180deg, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.15));
-    box-shadow:
-      inset 0 3px 9px rgba(0, 0, 0, 0.6),
-      inset 0 -1px 0 rgba(255, 255, 255, 0.07);
-  }
-
-  .hero img {
-    max-height: 200px;
-    filter: drop-shadow(0 16px 14px rgba(0, 0, 0, 0.7)) drop-shadow(0 0 1px rgba(255, 255, 255, 0.25));
-  }
-
   h2 {
     font-size: 1.25rem;
     font-weight: 650;
   }
 
+  .edit {
+    text-align: left;
+  }
+
+  .edit .notice {
+    margin-bottom: 0.7rem;
+  }
+
+  .edit textarea {
+    resize: vertical;
+  }
+
+  .edit-actions {
+    justify-content: flex-end;
+  }
+
   .desc {
+    white-space: pre-line;
     margin-top: 0.3rem;
     color: var(--text-muted);
     font-size: 0.86rem;

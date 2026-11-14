@@ -58,17 +58,25 @@ export const CollectiumAPI = {
   deleteAccount: (password) =>
     request('/auth/account', { method: 'DELETE', body: JSON.stringify({ password }) }),
 
-  login: (email, password) =>
-    fetch(`${API_ROOT}/auth/login`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    }).then(handleResponse),
+  resendConfirmation: (email) =>
+    request('/auth/resend-confirmation', { method: 'POST', body: JSON.stringify({ email }) }),
 
   // ---- Profiles ----
   getProfile: (username) =>
     request(`/profiles/${encodeURIComponent(username)}`),
+
+  /** `fields`: any of display_name, username, bio, featured_collection_ids. */
+  updateMyProfile: (fields) =>
+    request('/profiles/me', { method: 'PATCH', body: JSON.stringify(fields) }),
+
+  /** kind: 'avatar' | 'banner' */
+  uploadProfileImage: (kind, blob) => {
+    const formData = new FormData();
+    formData.append('image', blob, `${kind}.${blob.type === 'image/png' ? 'png' : 'jpg'}`);
+    return request(`/profiles/me/${kind}`, { method: 'POST', body: formData, isJson: false });
+  },
+
+  removeProfileImage: (kind) => request(`/profiles/me/${kind}`, { method: 'DELETE' }),
 
   // ---- Collections ----
   getCollection: (id) =>

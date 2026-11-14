@@ -66,7 +66,14 @@ You are responsible for reviewing processed images. The interactive manual-outli
 
 ## 8. Cookies
 
-We use only **essential cookies** needed for authentication and session management (for example, a session cookie). We do not use analytics, advertising, or tracking cookies. You can block cookies in your browser, but doing so may prevent you from logging in or using the Service.
+We use only **essential cookies** needed for authentication and session management:
+
+- `collectium_access` and `collectium_refresh` keep you signed in. If you tick **Keep me signed in**, they last up to 30 days; otherwise they are deleted when you close your browser.
+- `collectium_remember` records whether you ticked **Keep me signed in**.
+
+We also store two small preferences in your browser's local storage, which are never sent to us: your light/dark theme choice and the fact that you have seen the cookie notice.
+
+We do not use analytics, advertising, or tracking cookies. You can block cookies in your browser, but doing so may prevent you from logging in or using the Service.
 
 ## 9. Third-Party Processors
 

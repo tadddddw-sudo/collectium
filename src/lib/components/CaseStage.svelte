@@ -136,13 +136,11 @@
     height: clamp(430px, 62vh, 600px);
     border-radius: var(--r-lg);
     overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.13);
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0) 16%),
-      linear-gradient(180deg, #1a222f 0%, #101722 46%, #1d2531 50.6%, #2b3543 52%, #131a25 94%, #0d131c 100%);
+    border: 1px solid var(--line);
+    background: var(--stage-bg);
     box-shadow:
       var(--shadow-deep),
-      inset 0px 1px 0px rgba(255, 255, 255, 0.4),
+      var(--edge-spec),
       inset 0px -1px 0px rgba(0, 0, 0, 0.7),
       inset 0px -40px 60px rgba(0, 0, 0, 0.45);
   }
@@ -200,8 +198,8 @@
     max-width: 140px;
     padding: 0.08rem 0.4rem;
     border-radius: 4px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background: linear-gradient(180deg, rgba(38, 48, 64, 0.92), rgba(16, 22, 32, 0.92));
+    border: 1px solid var(--line);
+    background: var(--tag-bg);
     font-size: 0.66rem;
     color: var(--text-soft);
     white-space: nowrap;
@@ -212,7 +210,7 @@
     box-shadow:
       0px 3px 8px rgba(0, 0, 0, 0.5),
       inset 0px 1px 0px rgba(255, 255, 255, 0.3),
-      inset 0px -1px 0px rgba(0, 0, 0, 0.5);
+      var(--edge-ao);
   }
 
   .case-item:hover .tag,

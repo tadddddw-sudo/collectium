@@ -106,13 +106,11 @@
     margin: 0 auto;
     padding: 3px;
     border-radius: var(--r-xl);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0) 4%),
-      #1a2230;
+    border: 1px solid var(--line);
+    background: var(--binder-slab);
     box-shadow:
       var(--shadow-deep),
-      inset 0px 1px 0px rgba(255, 255, 255, 0.4),
+      var(--edge-spec),
       inset 0px -2px 5px rgba(0, 0, 0, 0.6);
   }
 
@@ -122,9 +120,7 @@
     padding: 1.05rem;
     border-radius: 10px;
     /* matte page: fine horizontal grain, darkening away from the light */
-    background:
-      repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.012) 0 1px, transparent 1px 4px),
-      linear-gradient(180deg, #1b2331 0%, #121924 55%, #0d141e 100%);
+    background: var(--binder-page);
     box-shadow: inset 0px 2px 8px rgba(0, 0, 0, 0.55);
   }
 
@@ -139,8 +135,8 @@
     gap: 0.3rem;
     padding: 0.55rem;
     border-radius: var(--r-md);
-    border: 1px solid rgba(0, 0, 0, 0.6);
-    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--well-border);
+    background: var(--well-bg);
     box-shadow:
       inset 0px 4px 9px rgba(0, 0, 0, 0.55),
       inset 0px -1px 0px rgba(255, 255, 255, 0.06),
@@ -160,11 +156,11 @@
 
   button.pocket.filled:hover,
   button.pocket.empty:hover {
-    border-color: rgba(0, 229, 255, 0.5);
+    border-color: rgb(var(--accent-rgb) / 0.5);
     box-shadow:
       inset 0px 4px 9px rgba(0, 0, 0, 0.5),
-      inset 0px 0px 18px rgba(0, 229, 255, 0.14),
-      0px 0px 8px rgba(0, 229, 255, 0.3);
+      inset 0px 0px 18px rgb(var(--accent-rgb) / 0.14),
+      0px 0px 8px rgb(var(--accent-rgb) / 0.3);
   }
 
   /* Reader view: an empty pocket is inert decoration, not a control. */

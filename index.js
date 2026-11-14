@@ -10,6 +10,7 @@ import authRoutes from './routes/auth.js';
 import profileRoutes from './routes/profiles.js';
 import collectionRoutes from './routes/collections.js';
 import itemRoutes from './routes/items.js';
+import seoRoutes from './routes/seo.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const dist = path.join(here, 'dist');
@@ -83,6 +84,26 @@ app.use('/api', (err, req, res, next) => {
   res.status(500).json({ error: 'Something went wrong. Please try again.' });
 });
 
+// robots.txt + sitemap.xml (rate limited like the API: the sitemap queries the database).
+app.use(['/robots.txt', '/sitemap.xml'], apiLimiter);
+app.use(seoRoutes);
+
+// Pages the SPA actually has. Anything else still boots the app (which shows
+// its 404 page) but answers with a real 404 status, so search engines and
+// link checkers don't index made-up URLs. Keep in sync with src/routes/.
+const SPA_ROUTES = new Set([
+  '/',
+  '/login',
+  '/signup',
+  '/forgot-password',
+  '/reset-password',
+  '/profile',
+  '/collection',
+  '/settings',
+  '/terms',
+  '/privacy',
+]);
+
 if (hasBuild) {
   // Hashed SvelteKit assets are safe to cache for a year. Everything else under
   // /_app (notably version.json) must stay revalidated.
@@ -94,7 +115,8 @@ if (hasBuild) {
 
   // SPA fallback: every non-API route boots the client router.
   app.get('*', (req, res) => {
-    res.sendFile(path.join(dist, 'index.html'));
+    const known = SPA_ROUTES.has(req.path.replace(/\/+$/, '') || '/');
+    res.status(known ? 200 : 404).sendFile(path.join(dist, 'index.html'));
   });
 } else {
   // Before the first `npm run build` there is nothing to serve but the API.

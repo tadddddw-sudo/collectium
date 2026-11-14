@@ -9,10 +9,18 @@ import { createIsolatedClient, isAuthError } from './supabaseClient.js';
 
 export const ACCESS_COOKIE = 'collectium_access';
 export const REFRESH_COOKIE = 'collectium_refresh';
+/** "1" when the user ticked "Keep me signed in"; refreshes keep the same cookie lifetime. */
+export const REMEMBER_COOKIE = 'collectium_remember';
+
+const REMEMBER_SECONDS = 60 * 60 * 24 * 30;
 
 // Refresh a little early so a request never races the expiry boundary.
 const EXPIRY_SKEW_MS = 30_000;
 
+/**
+ * `maxAgeSeconds` null makes a browser-session cookie: it disappears when the
+ * browser is closed. That is what an unticked "Keep me signed in" gives you.
+ */
 function cookieOptions(maxAgeSeconds) {
   return {
     httpOnly: true,
@@ -22,7 +30,7 @@ function cookieOptions(maxAgeSeconds) {
     // leaves it off; set COOKIE_SECURE=false only for an http-only deployment.
     secure: process.env.NODE_ENV === 'production' && process.env.COOKIE_SECURE !== 'false',
     // Express expects milliseconds here, not seconds.
-    maxAge: maxAgeSeconds * 1000,
+    ...(maxAgeSeconds == null ? {} : { maxAge: maxAgeSeconds * 1000 }),
   };
 }
 
@@ -43,17 +51,28 @@ export function parseCookies(header = '') {
   return out;
 }
 
-export function setSessionCookies(res, session) {
+/**
+ * Store the session in cookies. With `remember` the refresh cookie lasts 30
+ * days; without it every cookie ends when the browser closes.
+ */
+export function setSessionCookies(res, session, { remember = false } = {}) {
   if (!session?.access_token) return;
-  res.cookie(ACCESS_COOKIE, session.access_token, cookieOptions(session.expires_in || 3600));
+  res.cookie(
+    ACCESS_COOKIE,
+    session.access_token,
+    cookieOptions(remember ? session.expires_in || 3600 : null)
+  );
   if (session.refresh_token) {
-    res.cookie(REFRESH_COOKIE, session.refresh_token, cookieOptions(60 * 60 * 24 * 30));
+    res.cookie(REFRESH_COOKIE, session.refresh_token, cookieOptions(remember ? REMEMBER_SECONDS : null));
   }
+  if (remember) res.cookie(REMEMBER_COOKIE, '1', cookieOptions(REMEMBER_SECONDS));
+  else res.clearCookie(REMEMBER_COOKIE, { path: '/' });
 }
 
 export function clearSessionCookies(res) {
   res.clearCookie(ACCESS_COOKIE, { path: '/' });
   res.clearCookie(REFRESH_COOKIE, { path: '/' });
+  res.clearCookie(REMEMBER_COOKIE, { path: '/' });
 }
 
 /** 401 + AUTH_REQUIRED for a dead session, 400 for anything else. */
@@ -106,7 +125,7 @@ export async function attachSession(req, res, next) {
       });
       if (!error && data?.session) {
         token = data.session.access_token;
-        setSessionCookies(res, data.session);
+        setSessionCookies(res, data.session, { remember: cookies[REMEMBER_COOKIE] === '1' });
       } else {
         token = null;
         clearSessionCookies(res);

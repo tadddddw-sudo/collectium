@@ -46,6 +46,9 @@
     }
   }
 
+  // Follow the store so edits made on the profile page show up here.
+  $: if (ready) me = $userProfile;
+
   onMount(async () => {
     me = await waitForAuth();
     ready = true;
@@ -115,6 +118,11 @@
         <div class="setting-row">
           <span class="k">Profile</span>
           <a class="v link" href={`/profile?u=${encodeURIComponent(me.username)}`}>Open my collection ›</a>
+        </div>
+        <div class="actions">
+          <a class="btn btn-sm" href={`/profile?u=${encodeURIComponent(me.username)}&edit=1`}>
+            Edit name, handle, bio and pictures
+          </a>
         </div>
       </div>
 
@@ -202,13 +210,6 @@
   </div>
 {/if}
 
-{#if ready}
-  <p class="legal-links">
-    <a href="/terms">Terms of Service</a>
-    <span aria-hidden="true">·</span>
-    <a href="/privacy">Privacy Policy</a>
-  </p>
-{/if}
 
 <style>
   .head {
@@ -259,11 +260,9 @@
     padding: 0.6rem 0.8rem;
     /* a shallow carved channel, one per value */
     border-radius: var(--r-sm);
-    border: 1px solid rgba(0, 0, 0, 0.5);
-    background: rgba(0, 0, 0, 0.24);
-    box-shadow:
-      inset 0px 2px 5px rgba(0, 0, 0, 0.45),
-      0px 1px 0px rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--well-border);
+    background: var(--well-bg);
+    box-shadow: var(--shadow-carve), var(--edge-lip);
   }
 
   .k {
@@ -318,7 +317,7 @@
   .subsection {
     margin-top: 1.1rem;
     padding-top: 1rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    border-top: 1px solid var(--line);
   }
 
   .subsection h3 {
@@ -344,12 +343,4 @@
     margin: 0 0 0.7rem;
   }
 
-  .legal-links {
-    margin-top: 1.5rem;
-    display: flex;
-    gap: 0.5rem;
-    justify-content: center;
-    font-size: 0.8rem;
-    color: var(--text-dim);
-  }
 </style>
