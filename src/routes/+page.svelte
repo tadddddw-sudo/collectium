@@ -10,7 +10,7 @@
   let error = '';
   let busy = false;
 
-  // "Your vitrine" — the signed-in collector's own collections.
+  // "Your collection" — the signed-in collector's own collections.
   let mine = [];
   let mineState = 'idle'; // idle | loading | ready
 
@@ -57,7 +57,7 @@
   }
 </script>
 
-<svelte:head><title>Collectium — every collection deserves a vitrine</title></svelte:head>
+<svelte:head><title>Collectium — every collection deserves a place</title></svelte:head>
 
 <section class="head">
   <h1>Home</h1>
@@ -65,7 +65,7 @@
     {#if me}
       Welcome back, <strong>{me.display_name || me.username}</strong>.
     {:else}
-      Look up any collector's vitrine — no account needed.
+      Look up any collector's collections — no account needed.
     {/if}
   </p>
 </section>
@@ -85,7 +85,7 @@
       on:input={() => (error = '')}
     />
     <button class="btn" type="submit" disabled={busy}>
-      {busy ? 'Looking…' : 'Open vitrine'}
+      {busy ? 'Looking…' : 'Open the collection'}
     </button>
   </div>
   {#if error}
@@ -97,7 +97,7 @@
   <div class="aero guest-card">
     <div class="guest-mark"><Logo size={44} /></div>
     <div>
-      <h2>Start your own vitrine</h2>
+      <h2>Start your own collection</h2>
       <p class="muted">
         Binders for card pages, glass cases for objects. Share either with a link or a QR code.
       </p>

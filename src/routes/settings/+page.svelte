@@ -79,7 +79,7 @@
         </div>
         <div class="setting-row">
           <span class="k">Profile</span>
-          <a class="v link" href={`/profile?u=${encodeURIComponent(me.username)}`}>Open my vitrine ›</a>
+          <a class="v link" href={`/profile?u=${encodeURIComponent(me.username)}`}>Open my collection ›</a>
         </div>
       </div>
     </div>
@@ -87,7 +87,7 @@
     <div class="aero group">
       <div class="group-head">
         <h2>Share profile</h2>
-        <p class="dim">A link and QR code that open your vitrine on any device.</p>
+        <p class="dim">A link and QR code that opens your collection on any device.</p>
       </div>
       <div class="group-body share">
         {#if qrSrc}

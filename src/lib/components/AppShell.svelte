@@ -61,7 +61,7 @@
         <Logo size={30} />
         <span class="brand-text">
           <strong>Collectium</strong>
-          <em>collector's vitrine</em>
+          <em>collector's collections</em>
         </span>
       </a>
 

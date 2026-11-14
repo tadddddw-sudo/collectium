@@ -17,7 +17,7 @@
 
 <div class="landing aero">
   <span class="eyebrow">Collectium</span>
-  <h1>Whose vitrine are you looking for?</h1>
+  <h1>Whose collections are you looking for?</h1>
   <p class="lede">
     Look up a collector by their handle. Binders, display cases, and every piece inside them
     open right up — no account needed.
@@ -39,7 +39,7 @@
         on:input={() => (touched = false)}
         aria-invalid={touched && !username.trim()}
       />
-      <button class="btn" type="submit">Open vitrine</button>
+      <button class="btn" type="submit">Open collection</button>
     </div>
     {#if touched && !username.trim()}
       <p class="notice notice-error" role="alert">Enter a handle to continue.</p>

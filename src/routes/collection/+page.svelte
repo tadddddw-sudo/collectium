@@ -241,7 +241,7 @@
 
 <div class="page wide">
   {#if loading}
-    <p class="loading">Opening the vitrine…</p>
+    <p class="loading">Opening the collection…</p>
   {:else if error}
     <div class="notice notice-error" role="alert">{error}</div>
     <a class="btn btn-ghost" href="/">Back to Collectium</a>

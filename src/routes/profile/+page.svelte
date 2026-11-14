@@ -157,7 +157,7 @@
 {#if needsUsername}
   <GuestLanding />
 {:else if loading && !profile}
-  <p class="empty-note">Opening the vitrine…</p>
+  <p class="empty-note">Opening the collection…</p>
 {:else if error}
   <div class="notice notice-error" role="alert">{error}</div>
   <a class="btn btn-ghost" href="/">Back to home</a>
