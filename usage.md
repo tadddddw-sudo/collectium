@@ -299,9 +299,10 @@ Set these in the host's settings or a `.env` file on the server. Never commit
       hour, so signup confirmations and password resets won't reach real users.
       Then raise the email limit under **Authentication → Rate Limits** to fit
       your traffic.
-- [ ] **SQL Editor:** run `supabase/account-deletion.sql` and
-      `supabase/profile-editing.sql` once each, or account deletion and profile
-      editing fail.
+- [ ] **SQL Editor:** run these once each, in this order:
+      `supabase/schema.sql` (tables, signup trigger, Row Level Security, the
+      `collectibles` bucket), then `supabase/profile-editing.sql`, then
+      `supabase/account-deletion.sql`. All three are safe to run again.
 - [ ] **Authentication → Emails:** paste the templates from
       `supabase/email-templates/` (see "Email templates" above) and keep
       **Confirm email** on. Add `https://<your-host>/login` to **Redirect URLs**
@@ -309,8 +310,11 @@ Set these in the host's settings or a `.env` file on the server. Never commit
 - [ ] **Row Level Security** is enabled on `profiles`, `collections` and
       `collection_items`. The policies must let owners edit only their own rows
       and keep private collections (`is_public = false`) hidden from everyone
-      else. These policies are the app's real access control, and they aren't
-      in this repository, so check them by hand.
+      else. `supabase/schema.sql` creates these policies, but Postgres combines
+      policies with OR, so an older policy such as `using (true)` still exposes
+      every row. List them all with
+      `select tablename, policyname, cmd, qual from pg_policies where schemaname in ('public', 'storage');`
+      and delete any that aren't in the SQL files.
 - [ ] **Storage:** the `collectibles` bucket allows uploads and deletes only
       under the uploader's own `<user_id>/` folder.
 
