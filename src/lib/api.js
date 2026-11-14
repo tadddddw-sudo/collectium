@@ -38,12 +38,15 @@ async function request(path, { method = 'GET', body, isJson = true } = {}) {
 
 export const CollectiumAPI = {
   // ---- Auth ----
-  signup: (username, email, password) =>
+  signup: (username, email, password, acceptedTerms) =>
     fetch(`${API_ROOT}/auth/signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, email, password }),
+      body: JSON.stringify({ username, email, password, accepted_terms: acceptedTerms === true }),
     }).then(handleResponse),
+
+  deleteAccount: (password) =>
+    request('/auth/account', { method: 'DELETE', body: JSON.stringify({ password }) }),
 
   login: (email, password) =>
     fetch(`${API_ROOT}/auth/login`, {

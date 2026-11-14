@@ -7,6 +7,7 @@
   let username = '';
   let email = '';
   let password = '';
+  let acceptedTerms = false;
   let error = '';
   let success = false;
   let busy = false;
@@ -23,9 +24,13 @@
       error = 'Password does not meet the requirements.';
       return;
     }
+    if (!acceptedTerms) {
+      error = 'You need to accept the Terms of Service and Privacy Policy.';
+      return;
+    }
     busy = true;
     try {
-      await CollectiumAPI.signup(username.trim(), email, password);
+      await CollectiumAPI.signup(username.trim(), email, password, acceptedTerms);
       success = true;
       timer = setTimeout(() => goto('/login', { replaceState: true }), 1200);
     } catch (err) {
@@ -105,7 +110,17 @@
         </ul>
       </div>
 
-      <button class="btn btn-block" type="submit" disabled={busy || !passwordOk}>
+      <label class="consent">
+        <input type="checkbox" name="accept_terms" required bind:checked={acceptedTerms} />
+        <span>
+          I agree to the
+          <a href="/terms" target="_blank" rel="noopener">Terms of Service</a>
+          and the
+          <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a>.
+        </span>
+      </label>
+
+      <button class="btn btn-block" type="submit" disabled={busy || !passwordOk || !acceptedTerms}>
         {busy ? 'Creating…' : 'Sign up'}
       </button>
     </form>
@@ -152,6 +167,22 @@
   .rules li.met {
     color: var(--text-muted);
     font-weight: 600;
+  }
+
+  .consent {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+    margin: 0.2rem 0 1rem;
+    font-size: 0.82rem;
+    line-height: 1.45;
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+
+  .consent input {
+    margin-top: 0.15rem;
+    accent-color: var(--accent-cyan);
   }
 
   .switch {

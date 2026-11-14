@@ -44,6 +44,14 @@ export function createAuthClient(accessToken) {
   );
 }
 
+// A throwaway anon client with no stored session, for one-off auth checks
+// (e.g. re-verifying a password) that must not touch the shared client's state.
+export function createIsolatedClient() {
+  return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
 // A tiny helper — put in supabaseClient.js or a new util
 export function isAuthError(error) {
   if (!error) return false;
