@@ -469,10 +469,12 @@
     gap: 3px;
     padding: 3px;
     margin-bottom: 1rem;
-    border-radius: 8px;
-    border: 1px solid rgba(0, 0, 0, 0.65);
-    background: linear-gradient(180deg, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.2));
-    box-shadow: inset 0 3px 7px rgba(0, 0, 0, 0.6), 0 1px 0 rgba(255, 255, 255, 0.08);
+    border-radius: var(--r-lg);
+    border: 1px solid rgba(0, 0, 0, 0.6);
+    background: rgba(0, 0, 0, 0.3);
+    box-shadow:
+      inset 0px 3px 6px rgba(0, 0, 0, 0.5),
+      0px 1px 0px rgba(255, 255, 255, 0.1);
   }
 
   .mode {
@@ -485,22 +487,25 @@
     font-weight: 650;
     letter-spacing: 0.01em;
     cursor: pointer;
-    transition: background 120ms ease, color 120ms ease, box-shadow 120ms ease;
+    transition: all var(--transition-smooth);
   }
 
   .mode:hover {
     color: var(--text-soft);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0));
   }
 
+  /* The selected tab rises out of the groove as a lit glossy key. */
   .mode.active {
-    color: #04141b;
-    border-color: #00779a;
+    color: #fff;
+    border-color: #0033aa;
     background: var(--accent-gradient);
-    text-shadow: 0 1px 1px rgba(255, 255, 255, 0.4);
+    text-shadow: var(--text-glow);
     box-shadow:
-      0 0 10px rgba(0, 229, 255, 0.35),
-      inset 0 1px 1px rgba(255, 255, 255, 0.75),
-      inset 0 -2px 3px rgba(0, 0, 0, 0.3);
+      0px 2px 4px rgba(0, 0, 0, 0.4),
+      0px 0px 8px rgba(0, 229, 255, 0.3),
+      inset 0px 2px 3px rgba(255, 255, 255, 0.6),
+      inset 0px -2px 3px rgba(0, 0, 0, 0.4);
   }
 
   .status {

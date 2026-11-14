@@ -142,9 +142,9 @@
       linear-gradient(180deg, #1a222f 0%, #101722 46%, #1d2531 50.6%, #2b3543 52%, #131a25 94%, #0d131c 100%);
     box-shadow:
       var(--shadow-deep),
-      inset 0 1px 0 rgba(255, 255, 255, 0.34),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.7),
-      inset 0 -40px 60px rgba(0, 0, 0, 0.45);
+      inset 0px 1px 0px rgba(255, 255, 255, 0.4),
+      inset 0px -1px 0px rgba(0, 0, 0, 0.7),
+      inset 0px -40px 60px rgba(0, 0, 0, 0.45);
   }
 
   /* specular sheen + the shelf's reflected highlight */
@@ -165,7 +165,7 @@
     max-width: 24vw;
     padding: 6px;
     border-radius: var(--r-md);
-    transition: transform 120ms ease;
+    transition: transform var(--transition-smooth);
     user-select: none;
     touch-action: none;
   }
@@ -208,8 +208,11 @@
     overflow: hidden;
     text-overflow: ellipsis;
     opacity: 0;
-    transition: opacity 120ms ease;
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    transition: opacity var(--transition-smooth);
+    box-shadow:
+      0px 3px 8px rgba(0, 0, 0, 0.5),
+      inset 0px 1px 0px rgba(255, 255, 255, 0.3),
+      inset 0px -1px 0px rgba(0, 0, 0, 0.5);
   }
 
   .case-item:hover .tag,

@@ -327,8 +327,8 @@
       linear-gradient(160deg, #23324a 0%, #131a26 55%, #0b111a 100%);
     box-shadow:
       var(--shadow-deep),
-      inset 0 1px 0 rgba(255, 255, 255, 0.32),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.6);
+      inset 0px 1px 0px rgba(255, 255, 255, 0.4),
+      inset 0px -1px 0px rgba(0, 0, 0, 0.6);
   }
 
   /* the Aero glint sweeping across the banner */
@@ -381,14 +381,17 @@
     border-radius: 50%;
     font-size: 1.7rem;
     font-weight: 700;
-    color: #07202b;
+    /* a glossy bead set into a dark bezel */
+    color: #fff;
     background: var(--accent-gradient);
+    border: 1px solid #0033aa;
     box-shadow:
-      0 8px 20px rgba(0, 0, 0, 0.6),
-      inset 0 3px 3px rgba(255, 255, 255, 0.6),
-      inset 0 -4px 6px rgba(0, 0, 0, 0.35),
-      0 0 0 4px rgba(15, 20, 30, 0.85);
-    text-shadow: 0 1px 1px rgba(255, 255, 255, 0.35);
+      0px 8px 20px rgba(0, 0, 0, 0.6),
+      0px 0px 12px rgba(0, 229, 255, 0.3),
+      inset 0px 3px 4px rgba(255, 255, 255, 0.6),
+      inset 0px -4px 6px rgba(0, 0, 0, 0.4),
+      0 0 0 4px rgba(15, 20, 30, 0.9);
+    text-shadow: var(--text-glow);
   }
 
   .who {

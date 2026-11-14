@@ -161,9 +161,13 @@
     justify-content: space-between;
     gap: 1rem;
     padding: 0.6rem 0.8rem;
-    border-radius: 7px;
-    background: linear-gradient(180deg, rgba(0, 0, 0, 0.28), rgba(0, 0, 0, 0.1));
-    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.45), 0 1px 0 rgba(255, 255, 255, 0.06);
+    /* a shallow carved channel, one per value */
+    border-radius: var(--r-sm);
+    border: 1px solid rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.24);
+    box-shadow:
+      inset 0px 2px 5px rgba(0, 0, 0, 0.45),
+      0px 1px 0px rgba(255, 255, 255, 0.08);
   }
 
   .k {

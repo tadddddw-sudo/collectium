@@ -1,66 +1,80 @@
 /* ==========================================================================
-   Collectium — "Aero Vitrine"
-   Windows Aero / Frutiger Aero: dark glass, specular edges, polished plastic.
-   Pure CSS: no images, no WebGL, every surface is shaded.
+   Collectium — "Tactile Neo-Aero"
+   Matte-plastic structural depth (skeuomorphism / neumorphism) fused with the
+   specular luminosity and edge reflections of Frutiger Aero / Vista glass.
+
+   One light model governs every surface: a single source directly above.
+   - Raised objects: bright top edge, dark bottom edge, shadow cast downward.
+   - Carved channels: shadow on the inner top wall, a lip of light on the
+     outer bottom edge.
+   Pure CSS: no images, no WebGL.
    ========================================================================== */
 
 :root {
-  /* --- deep Aero desktop ------------------------------------------------ */
+  /* --- core foundation ------------------------------------------------- */
   --bg-base: #0f141e;
-  --bg-deep: #070b12;
-  --bg-shell: rgba(20, 27, 39, 0.92);
+  --bg-deep: #0a0e16;
+  --bg-shell: rgba(22, 29, 41, 0.96);
   --bg-panel: rgba(28, 35, 48, 0.85);
   --bg-panel-solid: #1c2330;
   --bg-raised: rgba(42, 52, 70, 0.9);
 
-  /* --- accents (Frutiger Aero cyan) ------------------------------------ */
+  /* --- dual-heritage accents ------------------------------------------- */
   --accent-cyan: #00e5ff;
   --accent-blue: #0055ff;
-  --accent-gradient: linear-gradient(180deg, #2be9ff 0%, #00b8e6 45%, #0055ff 100%);
+  --accent-gradient: linear-gradient(180deg, #00e5ff 0%, #0055ff 100%);
   --accent-soft: rgba(0, 229, 255, 0.14);
   --accent-line: rgba(0, 229, 255, 0.55);
+  --accent-glow: 0 0 8px rgba(0, 229, 255, 0.4);
 
-  /* --- brand (the isometric C) ----------------------------------------- */
+  /* --- brand (the isometric C — consumed by Logo.svelte, do not change) - */
   --brand-1: #ff9f04;
   --brand-2: #db8802;
   --brand-3: #b06c00;
   --brand-4: #8c5701;
   --brand-5: #6a4200;
 
-  /* --- gloss ------------------------------------------------------------ */
-  --gloss-top: rgba(255, 255, 255, 0.4);
-  --gloss-mid: rgba(255, 255, 255, 0.08);
-  --gloss-bottom: rgba(255, 255, 255, 0.05);
-  --rim: rgba(255, 255, 255, 0.11);
-  --rim-strong: rgba(255, 255, 255, 0.16);
-  --groove: rgba(0, 0, 0, 0.6);
-
-  /* --- type ------------------------------------------------------------- */
+  /* --- typography & text shadows --------------------------------------- */
   --text-main: #f8fafc;
   --text-soft: #cbd5e1;
   --text-muted: #94a3b8;
-  --text-dim: #64748b;
-  --text-glow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  --text-dim: #7a8aa1;
+  --text-glow: 0px 1px 2px rgba(0, 0, 0, 0.8);
   --text-glow-strong: 0 1px 0 rgba(0, 0, 0, 0.9), 0 0 14px rgba(0, 0, 0, 0.5);
+  /* engraved: dark above, light lip below — text pressed into plastic */
+  --text-engrave: 0 -1px 0 rgba(0, 0, 0, 0.75), 0 1px 0 rgba(255, 255, 255, 0.07);
 
-  --font-ui: "Segoe UI", "Segoe UI Variable", system-ui, -apple-system, "Helvetica Neue", sans-serif;
-  --font-data: ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, monospace;
+  --font-ui: 'Segoe UI', 'Segoe UI Variable', system-ui, -apple-system, 'Helvetica Neue', sans-serif;
+  --font-data: ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, Consolas, monospace;
 
-  /* --- depth ------------------------------------------------------------ */
-  --shadow-deep: 0 14px 34px rgba(0, 0, 0, 0.72), 0 3px 8px rgba(0, 0, 0, 0.5);
-  --shadow-lift: 0 20px 48px rgba(0, 0, 0, 0.8), 0 4px 12px rgba(0, 0, 0, 0.55);
-  --shadow-inset: inset 0 2px 6px rgba(0, 0, 0, 0.65), inset 0 -1px 0 rgba(255, 255, 255, 0.07);
+  /* --- light physics ---------------------------------------------------- */
+  /* specular top edge + ambient-occluded bottom edge of a raised object */
+  --edge-spec: inset 0px 1px 0px rgba(255, 255, 255, 0.4);
+  --edge-ao: inset 0px -1px 0px rgba(0, 0, 0, 0.5);
+  /* the lip of light under a carved channel */
+  --edge-lip: 0px 1px 0px rgba(255, 255, 255, 0.1);
+  --gloss-sheen: linear-gradient(to bottom, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 100%);
 
+  /* multi-layered tactile shadows (contact + ambient) */
+  --shadow-deep: 0px 10px 25px rgba(0, 0, 0, 0.7), 0px 2px 5px rgba(0, 0, 0, 0.5);
+  --shadow-lift: 0px 18px 40px rgba(0, 0, 0, 0.75), 0px 4px 10px rgba(0, 0, 0, 0.55);
+  --shadow-near: 0px 3px 6px rgba(0, 0, 0, 0.42), 0px 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-carve: inset 0px 3px 6px rgba(0, 0, 0, 0.5);
+
+  /* --- motion ----------------------------------------------------------- */
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-smooth: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* --- geometry --------------------------------------------------------- */
   --r-sm: 4px;
   --r-md: 6px;
-  --r-lg: 10px;
-  --r-xl: 16px;
+  --r-lg: 8px;
+  --r-xl: 12px;
   --r-pill: 999px;
 
   --rail: 72px;
   --rail-wide: 240px;
   --column: 768px;
-  --ease: cubic-bezier(0.22, 0.8, 0.3, 1);
 
   color-scheme: dark;
 }
@@ -74,7 +88,7 @@
 }
 
 html {
-  background: var(--bg-deep);
+  background: var(--bg-base);
   /* Symmetric scrollbar gutters keep centred content — and fixed overlays —
      aligned with the visual centre of the window. */
   scrollbar-gutter: stable both-edges;
@@ -88,6 +102,7 @@ html:has(.modal) {
 
 body {
   margin: 0;
+  min-height: 100vh;
   min-height: 100dvh;
   color: var(--text-main);
   font-family: var(--font-ui);
@@ -97,13 +112,9 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 
-  /* Layered Aero desktop: top bloom, horizon glow, plastic grain. */
-  background:
-    radial-gradient(120% 70% at 50% -10%, rgba(56, 108, 168, 0.28), transparent 60%),
-    radial-gradient(90% 50% at 50% 108%, rgba(0, 122, 168, 0.18), transparent 65%),
-    radial-gradient(60% 40% at 88% 8%, rgba(0, 229, 255, 0.07), transparent 70%),
-    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.012) 0 1px, transparent 1px 3px),
-    linear-gradient(180deg, #131b28 0%, var(--bg-base) 42%, #0a0f18 100%);
+  /* The light source: a single overhead bloom falling off into charcoal-blue. */
+  background: radial-gradient(circle at 50% 0%, #1e293b 0%, var(--bg-base) 70%);
+  background-color: var(--bg-base);
   background-attachment: fixed;
 }
 
@@ -126,6 +137,7 @@ a {
   color: var(--accent-cyan);
   text-decoration: none;
   text-shadow: 0 0 12px rgba(0, 229, 255, 0.28);
+  transition: color var(--transition-smooth);
 }
 
 a:hover {
@@ -150,14 +162,13 @@ img {
   color: #fff;
 }
 
+/* Focus is drawn with an outline so no component box-shadow can erase it. */
 :focus-visible {
-  outline: none;
-  box-shadow:
-    0 0 0 1px rgba(0, 229, 255, 0.9),
-    0 0 14px rgba(0, 229, 255, 0.55);
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 2px;
 }
 
-/* Aero-era scrollbars */
+/* Tactile scrollbars: a carved track with a raised plastic thumb. */
 * {
   scrollbar-width: thin;
   scrollbar-color: #3a4a63 transparent;
@@ -171,6 +182,7 @@ img {
 ::-webkit-scrollbar-track {
   background: rgba(0, 0, 0, 0.35);
   border-radius: 8px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 ::-webkit-scrollbar-thumb {
@@ -178,199 +190,193 @@ img {
   border: 3px solid transparent;
   background-clip: content-box;
   background-color: #46586f;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), inset 0 -1px 0 rgba(0, 0, 0, 0.5);
+  box-shadow: var(--edge-spec), var(--edge-ao);
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background-color: #5b718c;
 }
 
-/* ========================= glass surfaces ============================= */
+/* ======================= tactile aero surfaces ======================== */
 
-/* The core Aero slab: translucent dark glass, hard top glint, deep shadow. */
+/* Panels, cards, slabs. `.aero` is the legacy alias used across the markup. */
+.surface-tactile-aero,
 .aero {
   position: relative;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0) 46%),
-    var(--bg-panel);
-  backdrop-filter: blur(14px) saturate(120%);
-  -webkit-backdrop-filter: blur(14px) saturate(120%);
+  background: var(--bg-panel);
   border-radius: var(--r-lg);
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow:
     var(--shadow-deep),
-    inset 0 1px 0 rgba(255, 255, 255, 0.34),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.55);
+    inset 0px 1px 0px rgba(255, 255, 255, 0.4),
+    inset 0px -1px 0px rgba(0, 0, 0, 0.5);
+  transition: box-shadow var(--transition-smooth);
 }
 
-/* Aero "glint": a soft specular band across the upper half. */
+/* Specular sheen across the upper half — the reflection of the overhead light. */
+.surface-tactile-aero::before,
 .aero::before {
   content: '';
   position: absolute;
-  inset: 0 0 auto 0;
+  top: 0;
+  left: 0;
+  right: 0;
   height: 50%;
-  border-radius: inherit;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 100%);
+  background: var(--gloss-sheen);
   pointer-events: none;
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
 }
 
+/* Lift content above the sheen. */
+.surface-tactile-aero > *,
 .aero > * {
   position: relative;
 }
 
 /* Denser slab for sidebars and toolbars. */
 .aero-solid {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0) 30%),
-    var(--bg-shell);
-  backdrop-filter: blur(18px) saturate(130%);
-  -webkit-backdrop-filter: blur(18px) saturate(130%);
+  background: var(--gloss-sheen) 0 0 / 100% 30% no-repeat, var(--bg-shell);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow:
-    var(--shadow-lift),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.6);
+  box-shadow: var(--shadow-lift), var(--edge-spec), inset 0 -1px 0 rgba(0, 0, 0, 0.6);
 }
 
-/* Carved groove: inputs, pockets, empty wells. */
+/* Carved well: pockets, empty states, sunken trays. */
 .aero-well {
-  background:
-    linear-gradient(180deg, rgba(0, 0, 0, 0.45) 0%, rgba(0, 0, 0, 0.18) 100%),
-    rgba(10, 15, 24, 0.6);
-  border: 1px solid rgba(0, 0, 0, 0.65);
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(0, 0, 0, 0.6);
   border-radius: var(--r-md);
-  box-shadow:
-    inset 0 3px 7px rgba(0, 0, 0, 0.6),
-    inset 0 1px 0 rgba(0, 0, 0, 0.8),
-    0 1px 0 rgba(255, 255, 255, 0.09);
+  box-shadow: var(--shadow-carve), var(--edge-lip);
 }
 
-/* Thin divider that reads as an engraved line, not a flat border. */
+/* Engraved divider: a groove with a highlight on its lower wall. */
 .aero-rule {
   height: 1px;
   border: 0;
   margin: 0;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(0, 0, 0, 0.7) 12%,
-    rgba(0, 0, 0, 0.7) 88%,
-    transparent
-  );
+  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.7) 12%, rgba(0, 0, 0, 0.7) 88%, transparent);
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.075);
 }
 
-/* ============================= buttons ================================ */
+/* ========================= glossy tactile buttons ===================== */
 
+/* `.btn` is the legacy alias used across the markup. */
+.btn-glossy,
 .btn {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.45rem;
-  padding: 0.6rem 1.25rem;
+  padding: 10px 24px;
   border-radius: var(--r-md);
   border: 1px solid #0033aa;
   background: var(--accent-gradient);
   color: #fff;
   font-size: 0.875rem;
-  font-weight: 650;
+  font-weight: 600;
   line-height: 1.15;
   letter-spacing: 0.01em;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  text-shadow: var(--text-glow);
   cursor: pointer;
   white-space: nowrap;
-  transition:
-    filter 140ms var(--ease),
-    box-shadow 140ms var(--ease),
-    transform 90ms var(--ease);
   box-shadow:
-    0 4px 8px rgba(0, 0, 0, 0.45),
-    0 0 10px rgba(0, 229, 255, 0.22),
-    inset 0 2px 3px rgba(255, 255, 255, 0.55),
-    inset 0 -2px 3px rgba(0, 0, 0, 0.42);
+    0px 4px 6px rgba(0, 0, 0, 0.4),
+    0px 0px 8px rgba(0, 229, 255, 0.3),
+    inset 0px 2px 3px rgba(255, 255, 255, 0.6),
+    inset 0px -2px 3px rgba(0, 0, 0, 0.4);
+  transition: all var(--transition-smooth);
 }
 
-/* Specular crown on the top ~45% of every primary button. */
+/* Vista-style specular crown: a hard-edged gloss over the top ~45%. */
+.btn-glossy::after,
 .btn::after {
   content: '';
   position: absolute;
   inset: 1px 1px auto 1px;
-  height: 46%;
-  border-radius: 4px 4px 60% 60% / 4px 4px 14px 14px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0));
+  height: 45%;
+  border-radius: 5px 5px 50% 50% / 5px 5px 10px 10px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.04));
   pointer-events: none;
-  opacity: 0.75;
+  transition: opacity var(--transition-smooth);
 }
 
+.btn-glossy:hover:not(:disabled),
 .btn:hover:not(:disabled) {
-  filter: brightness(1.09);
+  filter: brightness(1.1);
   box-shadow:
-    0 7px 16px rgba(0, 0, 0, 0.55),
-    0 0 16px rgba(0, 229, 255, 0.45),
-    inset 0 2px 3px rgba(255, 255, 255, 0.7),
-    inset 0 -2px 3px rgba(0, 0, 0, 0.42);
+    0px 6px 12px rgba(0, 0, 0, 0.5),
+    0px 0px 12px rgba(0, 229, 255, 0.5),
+    inset 0px 2px 3px rgba(255, 255, 255, 0.7),
+    inset 0px -2px 3px rgba(0, 0, 0, 0.4);
 }
 
+.btn-glossy:active:not(:disabled),
 .btn:active:not(:disabled) {
   transform: translateY(1px);
   box-shadow:
-    0 2px 4px rgba(0, 0, 0, 0.5),
-    inset 0 2px 5px rgba(0, 0, 0, 0.45),
-    inset 0 -1px 2px rgba(255, 255, 255, 0.16);
+    0px 2px 4px rgba(0, 0, 0, 0.5),
+    inset 0px 2px 4px rgba(0, 0, 0, 0.4),
+    inset 0px -1px 2px rgba(255, 255, 255, 0.2);
 }
 
+/* A pressed key loses its crown: the light no longer catches the top. */
+.btn-glossy:active:not(:disabled)::after,
+.btn:active:not(:disabled)::after {
+  opacity: 0.35;
+}
+
+.btn-glossy:disabled,
 .btn:disabled {
   opacity: 0.42;
   cursor: not-allowed;
   filter: saturate(0.4);
 }
 
-/* Secondary: brushed graphite plastic. */
+/* Secondary: matte graphite plastic, same light model, no glow. */
 .btn-ghost {
   border-color: #131a24;
   background: linear-gradient(180deg, #4a5568 0%, #2d3748 100%);
   color: #e2e8f0;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
   box-shadow:
-    0 3px 6px rgba(0, 0, 0, 0.42),
-    inset 0 1px 0 rgba(255, 255, 255, 0.28),
-    inset 0 -2px 3px rgba(0, 0, 0, 0.5);
+    0px 4px 6px rgba(0, 0, 0, 0.4),
+    inset 0px 1px 0px rgba(255, 255, 255, 0.28),
+    inset 0px -2px 3px rgba(0, 0, 0, 0.45);
 }
 
 .btn-ghost::after {
-  opacity: 0.4;
+  opacity: 0.45;
 }
 
 .btn-ghost:hover:not(:disabled) {
   background: linear-gradient(180deg, #566477 0%, #35404f 100%);
   box-shadow:
-    0 6px 12px rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.34),
-    inset 0 -2px 3px rgba(0, 0, 0, 0.5);
+    0px 6px 12px rgba(0, 0, 0, 0.5),
+    inset 0px 1px 0px rgba(255, 255, 255, 0.34),
+    inset 0px -2px 3px rgba(0, 0, 0, 0.45);
 }
 
-/* Destructive: glowing red plastic. */
+/* Destructive: glossy red plastic. */
 .btn-danger {
   border-color: #5e120c;
   background: linear-gradient(180deg, #f07a68 0%, #d6432f 50%, #9c2215 100%);
   color: #fff;
   box-shadow:
-    0 4px 8px rgba(0, 0, 0, 0.45),
-    0 0 10px rgba(224, 93, 75, 0.25),
-    inset 0 2px 3px rgba(255, 255, 255, 0.4),
-    inset 0 -2px 3px rgba(0, 0, 0, 0.45);
+    0px 4px 6px rgba(0, 0, 0, 0.4),
+    0px 0px 8px rgba(224, 93, 75, 0.3),
+    inset 0px 2px 3px rgba(255, 255, 255, 0.45),
+    inset 0px -2px 3px rgba(0, 0, 0, 0.4);
 }
 
 .btn-danger:hover:not(:disabled) {
   box-shadow:
-    0 7px 16px rgba(0, 0, 0, 0.55),
-    0 0 16px rgba(224, 93, 75, 0.45),
-    inset 0 2px 3px rgba(255, 255, 255, 0.5),
-    inset 0 -2px 3px rgba(0, 0, 0, 0.45);
+    0px 6px 12px rgba(0, 0, 0, 0.5),
+    0px 0px 12px rgba(224, 93, 75, 0.5),
+    inset 0px 2px 3px rgba(255, 255, 255, 0.55),
+    inset 0px -2px 3px rgba(0, 0, 0, 0.4);
 }
 
-/* Bare icon button (modal close, rail toggle). */
+/* Bare icon button (rail toggle and similar). */
 .btn-icon {
   display: inline-flex;
   align-items: center;
@@ -383,17 +389,18 @@ img {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02));
   color: var(--text-muted);
   cursor: pointer;
-  transition: color 120ms, background 120ms, box-shadow 120ms;
+  box-shadow: var(--shadow-near), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  transition: all var(--transition-smooth);
 }
 
 .btn-icon:hover {
   color: var(--text-main);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.05));
-  box-shadow: 0 0 12px rgba(0, 229, 255, 0.2);
+  box-shadow: var(--shadow-near), inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 0 12px rgba(0, 229, 255, 0.2);
 }
 
 .btn-sm {
-  padding: 0.4rem 0.75rem;
+  padding: 6px 14px;
   font-size: 0.78rem;
 }
 
@@ -401,51 +408,59 @@ img {
   width: 100%;
 }
 
-/* ============================== inputs ================================ */
+/* ========================== inset form inputs ========================= */
 
+/* `.input` is the legacy alias used across the markup. */
+.input-tactile,
 .input {
-  width: 100%;
-  padding: 0.72rem 0.95rem;
-  border-radius: var(--r-md);
-  border: 1px solid rgba(0, 0, 0, 0.7);
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.42), rgba(0, 0, 0, 0.2));
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(0, 0, 0, 0.6);
+  border-radius: var(--r-sm);
+  padding: 12px 16px;
   color: var(--text-main);
+  width: 100%;
+  box-sizing: border-box;
   text-shadow: var(--text-glow);
   box-shadow:
-    inset 0 3px 7px rgba(0, 0, 0, 0.55),
-    inset 0 1px 0 rgba(0, 0, 0, 0.75),
-    0 1px 0 rgba(255, 255, 255, 0.09);
-  transition: border-color 160ms, box-shadow 160ms;
+    inset 0px 3px 6px rgba(0, 0, 0, 0.5),
+    0px 1px 0px rgba(255, 255, 255, 0.1);
+  transition:
+    border-color var(--transition-smooth),
+    box-shadow var(--transition-smooth);
 }
 
+.input-tactile::placeholder,
 .input::placeholder {
   color: var(--text-dim);
   text-shadow: none;
 }
 
+.input-tactile:focus,
 .input:focus {
   outline: none;
-  border-color: rgba(0, 229, 255, 0.75);
+  border-color: var(--accent-cyan);
   box-shadow:
-    inset 0 3px 7px rgba(0, 0, 0, 0.55),
-    inset 0 1px 0 rgba(0, 0, 0, 0.7),
-    0 0 10px rgba(0, 229, 255, 0.35),
-    0 0 24px rgba(0, 229, 255, 0.16);
+    inset 0px 3px 6px rgba(0, 0, 0, 0.5),
+    0px 0px 8px rgba(0, 229, 255, 0.4);
 }
 
+select.input-tactile,
 select.input {
   appearance: none;
   background-image:
     linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
-    linear-gradient(135deg, var(--text-muted) 50%, transparent 50%),
-    linear-gradient(180deg, rgba(0, 0, 0, 0.42), rgba(0, 0, 0, 0.2));
+    linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
   background-position:
     calc(100% - 18px) 55%,
-    calc(100% - 13px) 55%,
-    0 0;
-  background-size: 5px 5px, 5px 5px, 100% 100%;
+    calc(100% - 13px) 55%;
+  background-size: 5px 5px, 5px 5px;
   background-repeat: no-repeat;
   padding-right: 2.2rem;
+}
+
+select.input option {
+  background: var(--bg-panel-solid);
+  color: var(--text-main);
 }
 
 .field {
@@ -487,7 +502,7 @@ select.input {
   cursor: pointer;
 }
 
-/* range slider, Aero track */
+/* Range slider: carved track, glass-bead thumb lit from above. */
 input[type='range'] {
   -webkit-appearance: none;
   appearance: none;
@@ -499,8 +514,8 @@ input[type='range'] {
 input[type='range']::-webkit-slider-runnable-track {
   height: 8px;
   border-radius: 4px;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.3));
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.7), 0 1px 0 rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.6), var(--edge-lip);
 }
 
 input[type='range']::-webkit-slider-thumb {
@@ -509,14 +524,15 @@ input[type='range']::-webkit-slider-thumb {
   height: 18px;
   margin-top: -5px;
   border-radius: 50%;
-  background: radial-gradient(circle at 35% 25%, #ffffff 0%, #8fe9ff 30%, #0090c8 70%, #004a7a 100%);
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.9);
+  background: radial-gradient(circle at 50% 22%, #ffffff 0%, #8ff4ff 24%, #00b8e6 58%, #0055ff 100%);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.6), 0 0 6px rgba(0, 229, 255, 0.35), inset 0 -2px 2px rgba(0, 0, 0, 0.3);
 }
 
 input[type='range']::-moz-range-track {
   height: 8px;
   border-radius: 4px;
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.6);
 }
 
 input[type='range']::-moz-range-thumb {
@@ -524,19 +540,20 @@ input[type='range']::-moz-range-thumb {
   height: 16px;
   border: 0;
   border-radius: 50%;
-  background: radial-gradient(circle at 35% 25%, #fff, #8fe9ff 30%, #0090c8 70%);
+  background: radial-gradient(circle at 50% 22%, #fff, #8ff4ff 24%, #00b8e6 58%, #0055ff);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.6);
 }
 
-/* file input, restyled to a glossy picker */
+/* File input: a carved channel holding a graphite picker key. */
 input[type='file'] {
   width: 100%;
   padding: 0.45rem;
-  border: 1px solid rgba(0, 0, 0, 0.7);
-  border-radius: var(--r-md);
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.42), rgba(0, 0, 0, 0.2));
+  border: 1px solid rgba(0, 0, 0, 0.6);
+  border-radius: var(--r-sm);
+  background: rgba(0, 0, 0, 0.3);
   color: var(--text-muted);
   font-size: 0.8rem;
-  box-shadow: inset 0 3px 7px rgba(0, 0, 0, 0.55), 0 1px 0 rgba(255, 255, 255, 0.08);
+  box-shadow: var(--shadow-carve), var(--edge-lip);
 }
 
 input[type='file']::file-selector-button {
@@ -550,10 +567,16 @@ input[type='file']::file-selector-button {
   font-weight: 600;
   cursor: pointer;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), inset 0 -2px 3px rgba(0, 0, 0, 0.45);
+  transition: filter var(--transition-smooth);
+}
+
+input[type='file']::file-selector-button:hover {
+  filter: brightness(1.12);
 }
 
 /* ============================== chips ================================= */
 
+/* Small raised plastic pills. */
 .chip {
   display: inline-flex;
   align-items: center;
@@ -561,34 +584,45 @@ input[type='file']::file-selector-button {
   padding: 0.38rem 0.85rem;
   border-radius: var(--r-pill);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02));
-  color: var(--text-muted);
+  background: linear-gradient(180deg, #344155 0%, #222b3a 100%);
+  color: var(--text-soft);
   font-size: 0.78rem;
   font-weight: 600;
   text-shadow: var(--text-glow);
   cursor: pointer;
-  transition: color 140ms, box-shadow 140ms, background 140ms;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 2px 5px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--shadow-near), inset 0 1px 0 rgba(255, 255, 255, 0.26), inset 0 -1px 0 rgba(0, 0, 0, 0.45);
+  transition: all var(--transition-smooth);
 }
 
 .chip:hover {
   color: var(--text-main);
+  border-color: rgba(0, 229, 255, 0.4);
+  box-shadow:
+    var(--shadow-near),
+    0 0 10px rgba(0, 229, 255, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.45);
+}
+
+.chip:active {
+  transform: translateY(1px);
 }
 
 .chip[aria-pressed='true'],
 .chip.is-active {
-  color: #04141b;
-  border-color: #00779a;
+  color: #fff;
+  border-color: #0033aa;
   background: var(--accent-gradient);
-  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.35);
+  text-shadow: var(--text-glow);
   box-shadow:
-    0 0 12px rgba(0, 229, 255, 0.4),
-    inset 0 1px 1px rgba(255, 255, 255, 0.7),
-    inset 0 -2px 3px rgba(0, 0, 0, 0.3);
+    0 0 10px rgba(0, 229, 255, 0.4),
+    inset 0 2px 2px rgba(255, 255, 255, 0.55),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.35);
 }
 
 /* ============================= notices ================================ */
 
+/* Backlit status plates: tinted glass with the same top edge highlight. */
 .notice {
   display: flex;
   align-items: flex-start;
@@ -598,24 +632,24 @@ input[type='file']::file-selector-button {
   font-size: 0.84rem;
   line-height: 1.45;
   text-shadow: var(--text-glow);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 2px 6px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--shadow-near), inset 0 1px 0 rgba(255, 255, 255, 0.16), inset 0 -1px 0 rgba(0, 0, 0, 0.35);
 }
 
 .notice-error {
   border: 1px solid rgba(224, 93, 75, 0.5);
-  background: linear-gradient(180deg, rgba(224, 93, 75, 0.24), rgba(120, 24, 14, 0.28));
+  background: linear-gradient(180deg, rgba(224, 93, 75, 0.26), rgba(120, 24, 14, 0.3));
   color: #ffd2cb;
 }
 
 .notice-success {
   border: 1px solid rgba(62, 207, 142, 0.45);
-  background: linear-gradient(180deg, rgba(62, 207, 142, 0.22), rgba(12, 90, 58, 0.26));
+  background: linear-gradient(180deg, rgba(62, 207, 142, 0.24), rgba(12, 90, 58, 0.28));
   color: #c6ffe4;
 }
 
 .notice-info {
   border: 1px solid rgba(0, 229, 255, 0.35);
-  background: linear-gradient(180deg, rgba(0, 229, 255, 0.14), rgba(0, 60, 100, 0.24));
+  background: linear-gradient(180deg, rgba(0, 229, 255, 0.16), rgba(0, 60, 100, 0.26));
   color: #cbf7ff;
 }
 
@@ -635,35 +669,37 @@ input[type='file']::file-selector-button {
   /* A plain dimmed veil. A backdrop-filter here makes Chrome composite the
      page underneath *through* the panel, which shows as a stray band/line
      across the dialog. */
-  background: rgba(5, 8, 13, 0.74);
-  animation: modal-fade 160ms var(--ease);
+  background: rgba(5, 8, 13, 0.76);
+  animation: modal-fade var(--transition-smooth);
 }
 
+/* The modal is the highest physical object on screen: the longest cast
+   shadow, an opaque body, and a specular sheen built into its background
+   (no overlay pseudo-element, so nothing can draw an edge across artwork). */
 .modal-box {
   position: relative;
   width: 100%;
   max-width: 470px;
   margin: auto;
   padding: 1.5rem;
-  border-radius: 12px;
+  border-radius: var(--r-lg);
   border: 1px solid rgba(255, 255, 255, 0.14);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0) 32%),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 50%),
     linear-gradient(180deg, #232c3c 0%, #161d28 100%);
   box-shadow:
-    0 30px 70px rgba(0, 0, 0, 0.85),
+    0px 30px 70px rgba(0, 0, 0, 0.85),
+    var(--shadow-deep),
     0 0 0 1px rgba(0, 0, 0, 0.7),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.7);
-  animation: modal-rise 180ms var(--ease);
+    inset 0px 1px 0px rgba(255, 255, 255, 0.4),
+    inset 0px -1px 0px rgba(0, 0, 0, 0.6);
+  animation: modal-rise var(--transition-smooth);
 }
 
 .modal-box-wide {
   max-width: 560px;
 }
 
-/* No overlay strip on the box: the panel's own background gradient supplies
-   the gloss, so nothing can draw an edge across the artwork. */
 .modal-box > * {
   position: relative;
 }
@@ -674,8 +710,12 @@ input[type='file']::file-selector-button {
   margin: 0 0 1.1rem;
   padding-bottom: 0.85rem;
   text-shadow: var(--text-glow-strong);
+  /* engraved underline */
+  border-bottom: 1px solid rgba(0, 0, 0, 0.6);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
+/* Round glass bead. */
 .modal-close {
   position: absolute;
   top: 0.85rem;
@@ -687,18 +727,29 @@ input[type='file']::file-selector-button {
   display: grid;
   place-items: center;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.02));
-  color: var(--text-muted);
+  border: 1px solid rgba(0, 0, 0, 0.55);
+  background: linear-gradient(180deg, #4a5568 0%, #2a3342 100%);
+  color: var(--text-soft);
   font-size: 1rem;
   line-height: 1;
   cursor: pointer;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 2px 4px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-near), inset 0 1px 0 rgba(255, 255, 255, 0.32), inset 0 -1px 2px rgba(0, 0, 0, 0.4);
+  transition: all var(--transition-smooth);
 }
 
 .modal-close:hover {
   color: #fff;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.06));
+  filter: brightness(1.15);
+  box-shadow:
+    var(--shadow-near),
+    0 0 10px rgba(0, 229, 255, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.modal-close:active {
+  transform: translateY(1px);
+  box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.5);
 }
 
 .modal-actions {
@@ -729,13 +780,13 @@ input[type='file']::file-selector-button {
   font-variant-numeric: tabular-nums;
 }
 
+/* Small label engraved into the surface it sits on. */
 .eyebrow {
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  text-shadow: var(--text-glow);
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+  text-shadow: var(--text-engrave);
 }
 
 .muted {
@@ -780,7 +831,7 @@ input[type='file']::file-selector-button {
 
 /* ====================== binder + case primitives ====================== */
 
-/* Item art gets a plastic-object treatment: deep cast shadow + card edge. */
+/* Item art reads as a physical object: a cast shadow below, a faint rim light. */
 .item-art {
   filter: drop-shadow(0 15px 10px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 1px rgba(255, 255, 255, 0.25));
 }
