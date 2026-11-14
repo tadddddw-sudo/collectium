@@ -3,6 +3,7 @@
   import { goto } from '$app/navigation';
   import { userProfile, waitForAuth } from '$lib/stores.js';
   import { CollectiumAPI } from '$lib/apiClient.js';
+  import { handleAuthFailure } from '$lib/session.js';
   import { buildProfileUrl, renderQrToDataUrl } from '$lib/qr.js';
 
   let me = null;
@@ -10,6 +11,40 @@
   let qrSrc = '';
   let qrUrl = '';
   let copied = false;
+
+  let exportNote = false;
+
+  let confirmingDelete = false;
+  let deletePassword = '';
+  let deleteError = '';
+  let deleting = false;
+
+  function startDelete() {
+    confirmingDelete = true;
+    deletePassword = '';
+    deleteError = '';
+  }
+
+  function cancelDelete() {
+    confirmingDelete = false;
+    deletePassword = '';
+    deleteError = '';
+  }
+
+  async function deleteAccount(event) {
+    event.preventDefault();
+    deleteError = '';
+    deleting = true;
+    try {
+      await CollectiumAPI.deleteAccount(deletePassword);
+      userProfile.set(null);
+      goto('/', { replaceState: true });
+    } catch (err) {
+      deleting = false;
+      if (handleAuthFailure(err)) return;
+      deleteError = err.message || 'Could not delete the account.';
+    }
+  }
 
   onMount(async () => {
     me = await waitForAuth();
@@ -82,6 +117,59 @@
           <a class="v link" href={`/profile?u=${encodeURIComponent(me.username)}`}>Open my collection ›</a>
         </div>
       </div>
+
+      <div class="subsection">
+        <h3>Your data</h3>
+        <p class="dim">Download a copy of the images you have uploaded.</p>
+        <div class="actions">
+          <button class="btn btn-ghost btn-sm" type="button" on:click={() => (exportNote = true)}>
+            Download my data
+          </button>
+        </div>
+        {#if exportNote}
+          <p class="notice notice-info" role="status">Data export is coming soon.</p>
+        {/if}
+      </div>
+
+      <div class="subsection">
+        <h3>Delete account</h3>
+        <p class="dim">
+          Permanently deletes your account, collections, items and images. This cannot be undone.
+        </p>
+        {#if !confirmingDelete}
+          <div class="actions">
+            <button class="btn btn-danger btn-sm" type="button" on:click={startDelete}>
+              Delete account
+            </button>
+          </div>
+        {:else}
+          <form class="confirm" on:submit={deleteAccount}>
+            {#if deleteError}
+              <p class="notice notice-error" role="alert">{deleteError}</p>
+            {/if}
+            <div class="field">
+              <label for="delete-password">Enter your password to confirm</label>
+              <input
+                class="input"
+                id="delete-password"
+                name="password"
+                type="password"
+                autocomplete="current-password"
+                required
+                bind:value={deletePassword}
+              />
+            </div>
+            <div class="actions">
+              <button class="btn btn-danger btn-sm" type="submit" disabled={deleting || !deletePassword}>
+                {deleting ? 'Deleting…' : 'Permanently delete my account'}
+              </button>
+              <button class="btn btn-ghost btn-sm" type="button" on:click={cancelDelete} disabled={deleting}>
+                Cancel
+              </button>
+            </div>
+          </form>
+        {/if}
+      </div>
     </div>
 
     <div class="aero group">
@@ -112,6 +200,14 @@
       </div>
     </div>
   </div>
+{/if}
+
+{#if ready}
+  <p class="legal-links">
+    <a href="/terms">Terms of Service</a>
+    <span aria-hidden="true">·</span>
+    <a href="/privacy">Privacy Policy</a>
+  </p>
 {/if}
 
 <style>
@@ -217,5 +313,43 @@
     display: flex;
     gap: 0.6rem;
     flex-wrap: wrap;
+  }
+
+  .subsection {
+    margin-top: 1.1rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .subsection h3 {
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+
+  .subsection > p.dim {
+    margin: 0.15rem 0 0.7rem;
+    font-size: 0.8rem;
+    line-height: 1.5;
+  }
+
+  .subsection .notice {
+    margin-top: 0.7rem;
+  }
+
+  .confirm {
+    max-width: 360px;
+  }
+
+  .confirm .notice {
+    margin: 0 0 0.7rem;
+  }
+
+  .legal-links {
+    margin-top: 1.5rem;
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    font-size: 0.8rem;
+    color: var(--text-dim);
   }
 </style>

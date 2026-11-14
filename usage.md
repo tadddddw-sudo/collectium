@@ -98,7 +98,8 @@ taken port fails loudly instead of silently moving to 5174.
 - `/profile?u=<username>` — a collector's banner, bio and shelves.
 - `/collection?id=<uuid>` — a binder or display case.
 - `/collection?id=<uuid>&item=<uuid>` — opens one item's share dialog (QR code).
-- `/settings` — account details, profile QR, sign out.
+- `/settings` — account details, profile QR, data download, account deletion, sign out.
+- `/terms`, `/privacy` — Terms of Service and Privacy Policy (accepted at signup).
 
 The interface is a Windows-Aero/Frutiger-Aero dark skin (glossy cyan buttons,
 glass slabs, inset inputs) over a collapsible left rail. Hover or keyboard-focus
@@ -238,10 +239,11 @@ deployment, run `npm start` behind a TLS-terminating reverse proxy and set
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | GET | `/api/health` | – | liveness probe |
-| POST | `/api/auth/signup` | – | `{username,email,password}` |
+| POST | `/api/auth/signup` | – | `{username,email,password,accepted_terms:true}` |
 | POST | `/api/auth/login` | – | sets cookies, returns `{user,session,profile}` |
 | GET | `/api/auth/me` | cookie/bearer | `{profile}` or `{profile:null}` |
 | POST | `/api/auth/logout` | cookie/bearer | clears cookies |
+| DELETE | `/api/auth/account` | cookie/bearer | `{password}`; deletes images, rows and the auth user |
 | GET | `/api/profiles/:username` | optional | profile + collections |
 | GET | `/api/collections/:id` | optional | collection + items |
 | POST | `/api/collections` | required | create binder/case |
@@ -252,6 +254,13 @@ deployment, run `npm start` behind a TLS-terminating reverse proxy and set
 | DELETE | `/api/items/:id` | required | delete item |
 
 "required" routes accept either the session cookie or a bearer token.
+
+## Account deletion setup
+
+`DELETE /api/auth/account` needs two things in Supabase that the anon key
+cannot do by itself: a storage policy that lets users delete their own images,
+and the `delete_my_account()` SQL function that removes their rows and auth
+user. Run `supabase/account-deletion.sql` once in the Supabase SQL Editor.
 
 ## Scripts
 

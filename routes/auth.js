@@ -1,5 +1,5 @@
 import express from 'express';
-import { supabase, createAuthClient } from '../supabaseClient.js';
+import { supabase, createAuthClient, createIsolatedClient } from '../supabaseClient.js';
 import {
   clearSessionCookies,
   setSessionCookies,
@@ -32,6 +32,12 @@ function passwordPolicyError(password) {
 router.post('/signup', async (req, res) => {
   const { username, email, password } = req.body;
 
+  if (req.body.accepted_terms !== true) {
+    return res
+      .status(400)
+      .json({ error: 'You need to accept the Terms of Service and Privacy Policy.' });
+  }
+
   const passwordError = passwordPolicyError(password);
   if (passwordError) return res.status(400).json({ error: passwordError });
 
@@ -48,7 +54,8 @@ router.post('/signup', async (req, res) => {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { username } },
+    // Record when the user accepted the Terms and Privacy Policy (stored in auth user metadata).
+    options: { data: { username, legal_accepted_at: new Date().toISOString() } },
   });
 
   if (error) return res.status(400).json({ error: error.message });
@@ -130,6 +137,104 @@ router.post('/logout', async (req, res) => {
     } catch {
       /* revoked already, or offline */
     }
+  }
+
+  clearSessionCookies(res);
+  res.json({ success: true });
+});
+
+const IMAGE_BUCKET = 'collectibles';
+const LIST_PAGE = 1000;
+
+/** Every object path under `<userId>/` in the image bucket (uploads live at <userId>/<collectionId>/<file>). */
+async function listUserImagePaths(client, userId) {
+  const listAll = async (prefix) => {
+    const entries = [];
+    for (let offset = 0; ; offset += LIST_PAGE) {
+      const { data, error } = await client.storage
+        .from(IMAGE_BUCKET)
+        .list(prefix, { limit: LIST_PAGE, offset });
+      if (error) throw error;
+      entries.push(...data);
+      if (data.length < LIST_PAGE) return entries;
+    }
+  };
+
+  const paths = [];
+  for (const entry of await listAll(userId)) {
+    const entryPath = `${userId}/${entry.name}`;
+    if (entry.id) {
+      paths.push(entryPath); // a file directly under the user folder
+    } else {
+      for (const file of await listAll(entryPath)) {
+        if (file.id) paths.push(`${entryPath}/${file.name}`);
+      }
+    }
+  }
+  return paths;
+}
+
+// DELETE /api/auth/account -> permanently delete the signed-in user's account, data and images
+router.delete('/account', async (req, res) => {
+  const token = req.accessToken;
+  if (!token) {
+    return res.status(401).json({ error: 'Please sign in again.', code: 'AUTH_REQUIRED' });
+  }
+
+  const { password } = req.body || {};
+  if (typeof password !== 'string' || !password) {
+    return res.status(400).json({ error: 'Enter your password to confirm.' });
+  }
+
+  const { data: userData, error: userError } = await supabase.auth.getUser(token);
+  const user = userData?.user;
+  if (userError || !user) {
+    clearSessionCookies(res);
+    return res.status(401).json({ error: 'Session expired. Please sign in again.', code: 'AUTH_REQUIRED' });
+  }
+
+  // Re-check the password so a stolen or forgotten-open session can't delete the account.
+  // A separate client keeps the shared anon client's session state untouched.
+  const { error: verifyError } = await createIsolatedClient().auth.signInWithPassword({
+    email: user.email,
+    password,
+  });
+  if (verifyError) return res.status(403).json({ error: 'Password is incorrect.' });
+
+  const userClient = createAuthClient(token);
+
+  // 1. Images. Storage files are not removed by deleting database rows, so remove them first.
+  try {
+    const paths = await listUserImagePaths(userClient, user.id);
+    if (paths.length) {
+      const { data: removed, error: removeError } = await userClient.storage
+        .from(IMAGE_BUCKET)
+        .remove(paths);
+      if (removeError) throw removeError;
+      // Without a storage DELETE policy, Supabase silently removes nothing.
+      if ((removed?.length ?? 0) < paths.length) {
+        throw new Error(`only ${removed?.length ?? 0} of ${paths.length} images could be removed`);
+      }
+    }
+  } catch (err) {
+    console.error('[DELETE /auth/account] image cleanup failed:', err.message);
+    return res.status(500).json({
+      error:
+        'Could not delete your images, so the account was not deleted. ' +
+        'The storage delete policy from supabase/account-deletion.sql may be missing.',
+    });
+  }
+
+  // 2. Rows + auth user, in one transaction inside the SQL function.
+  const { error: deleteError } = await userClient.rpc('delete_my_account');
+  if (deleteError) {
+    console.error('[DELETE /auth/account] delete_my_account failed:', deleteError);
+    return res.status(500).json({
+      error:
+        deleteError.code === 'PGRST202'
+          ? 'Account deletion is not set up on the database yet. Run supabase/account-deletion.sql in Supabase.'
+          : 'Could not delete the account. Please try again.',
+    });
   }
 
   clearSessionCookies(res);
