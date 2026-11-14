@@ -245,8 +245,77 @@ npm start         # Express serves dist/ and the API on one origin
 ```
 
 `npm run preview` (`:4173`) is only a local check of the build. For a real
-deployment, run `npm start` behind a TLS-terminating reverse proxy and set
-`NODE_ENV=production TRUST_PROXY=1 APP_URL=https://<your-host>`.
+deployment, follow the checklist below.
+
+## Publishing checklist
+
+Everything to set up when hosting Collectium on a public domain. Replace
+`<your-host>` with your domain, e.g. `collectium.example`.
+
+### Server
+
+- [ ] **HTTPS.** Put Node behind a reverse proxy or host that terminates TLS
+      (nginx, Caddy, Cloudflare, a PaaS router). Session cookies are `Secure` in
+      production, so plain http logins will not stick.
+- [ ] **Install and build on the server:** `npm ci && npm run build`, then
+      `npm start`. Don't rely on the `node_modules/` copy in git.
+- [ ] **Keep it running.** Use a process manager (systemd, pm2, or your host's
+      own) that restarts the server if it exits and starts it on boot.
+- [ ] **Health check.** Point the host's health check at `GET /api/health`.
+- [ ] **One instance**, unless you move the rate limits to a shared store like
+      Redis. The counters live in memory, so each instance counts separately
+      (see `rateLimits.js`).
+
+### Environment variables
+
+Set these in the host's settings or a `.env` file on the server. Never commit
+`.env`: it is in `.gitignore`.
+
+| Variable | Value in production |
+|---|---|
+| `NODE_ENV` | `production` |
+| `SUPABASE_URL` | `https://<your-project>.supabase.co` |
+| `SUPABASE_KEY` | The project's **anon / publishable** key. Never the `service_role` key: that skips every Row Level Security rule. |
+| `PORT` | Whatever port the proxy forwards to (default `5000`). |
+| `APP_URL` | `https://<your-host>`, no trailing slash. Used for password reset links. |
+| `TRUST_PROXY` | `1` when there is one proxy in front of Node. Without it every visitor shares one rate-limit bucket, and one person can lock everyone out of logging in. Leave it unset only if Node faces the internet directly. |
+| `CORS_ORIGINS` | Leave unset. Only needed if another website must call the API with cookies. |
+| `COOKIE_SECURE` | Leave unset. Set `false` only if you really serve production over http. |
+
+### Supabase dashboard
+
+- [ ] **Authentication → URL Configuration:** set **Site URL** to
+      `https://<your-host>` and add `https://<your-host>/reset-password` to
+      **Redirect URLs**. Password reset emails won't link back to the app
+      without this.
+- [ ] **Authentication → SMTP Settings:** set up a custom SMTP provider
+      (Resend, Postmark, SendGrid, Amazon SES...). Supabase's built-in sender
+      only delivers to members of your Supabase team and only sends 2 emails an
+      hour, so signup confirmations and password resets won't reach real users.
+      Then raise the email limit under **Authentication → Rate Limits** to fit
+      your traffic.
+- [ ] **SQL Editor:** run `supabase/account-deletion.sql` once, or account
+      deletion fails.
+- [ ] **Row Level Security** is enabled on `profiles`, `collections` and
+      `collection_items`. The policies must let owners edit only their own rows
+      and keep private collections (`is_public = false`) hidden from everyone
+      else. These policies are the app's real access control, and they aren't
+      in this repository, so check them by hand.
+- [ ] **Storage:** the `collectibles` bucket allows uploads and deletes only
+      under the uploader's own `<user_id>/` folder.
+
+### After deploying, check
+
+- [ ] `curl https://<your-host>/api/health` returns `{"ok":true,...}`.
+- [ ] `curl -I https://<your-host>/` shows `Strict-Transport-Security` and
+      `X-Content-Type-Options: nosniff`.
+- [ ] Sign up with a real email address and confirm the email arrives.
+- [ ] Log in, reload the page, and confirm you are still logged in. If not, the
+      cookie was dropped (usually a missing HTTPS or `TRUST_PROXY` setting).
+- [ ] Use **Forgot your password?**, open the email link, and set a new
+      password. The link should open `/reset-password` on your domain.
+- [ ] Open one of your private collections in a private window while logged
+      out. You should get "Collection not found".
 
 ## API reference
 
