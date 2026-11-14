@@ -63,27 +63,40 @@
     width: 100%;
     padding: 0.9rem;
     text-align: left;
+    /* Tactile Aero surface; the sheen lives in the background so it never
+       sits over the thumbnail. */
     border-radius: var(--r-lg);
     border: 1px solid rgba(255, 255, 255, 0.1);
     background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0) 55%),
-      rgba(28, 35, 48, 0.82);
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 50%),
+      var(--bg-panel);
     box-shadow:
-      0 8px 20px rgba(0, 0, 0, 0.5),
-      inset 0 1px 0 rgba(255, 255, 255, 0.26),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.5);
+      var(--shadow-deep),
+      inset 0px 1px 0px rgba(255, 255, 255, 0.4),
+      inset 0px -1px 0px rgba(0, 0, 0, 0.5);
+    color: inherit;
     cursor: pointer;
-    transition: border-color 150ms var(--ease), box-shadow 150ms var(--ease), transform 150ms var(--ease);
+    transition: all var(--transition-smooth);
   }
 
+  /* Lifting toward the light: longer shadow, brighter rim, faint cyan glint. */
   .row:hover {
     border-color: rgba(0, 229, 255, 0.38);
-    transform: translateY(-1px);
+    transform: translateY(-2px);
     box-shadow:
-      0 12px 26px rgba(0, 0, 0, 0.6),
-      0 0 16px rgba(0, 229, 255, 0.18),
-      inset 0 1px 0 rgba(255, 255, 255, 0.32),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.5);
+      0px 16px 32px rgba(0, 0, 0, 0.72),
+      0px 3px 6px rgba(0, 0, 0, 0.5),
+      0px 0px 14px rgba(0, 229, 255, 0.18),
+      inset 0px 1px 0px rgba(255, 255, 255, 0.5),
+      inset 0px -1px 0px rgba(0, 0, 0, 0.5);
+  }
+
+  .row:active {
+    transform: translateY(0);
+    box-shadow:
+      0px 4px 10px rgba(0, 0, 0, 0.6),
+      inset 0px 1px 0px rgba(255, 255, 255, 0.3),
+      inset 0px -1px 0px rgba(0, 0, 0, 0.5);
   }
 
   .thumb {
@@ -91,14 +104,16 @@
     display: grid;
     place-items: center;
     height: 118px;
-    border-radius: 7px;
+    /* carved display recess */
+    border-radius: var(--r-md);
     overflow: hidden;
+    border: 1px solid rgba(0, 0, 0, 0.6);
     background:
       radial-gradient(60% 60% at 50% 100%, rgba(0, 229, 255, 0.08), transparent 70%),
-      linear-gradient(180deg, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.15));
+      rgba(0, 0, 0, 0.3);
     box-shadow:
-      inset 0 2px 6px rgba(0, 0, 0, 0.6),
-      inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+      inset 0px 3px 6px rgba(0, 0, 0, 0.5),
+      0px 1px 0px rgba(255, 255, 255, 0.1);
     padding: 0.55rem;
   }
 
@@ -127,10 +142,9 @@
   }
 
   .empty-text {
-    font-size: 0.66rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
+    font-size: 0.72rem;
     color: var(--text-dim);
+    text-shadow: var(--text-engrave);
   }
 
   .meta {
@@ -182,9 +196,14 @@
     width: 30px;
     height: 30px;
     border-radius: 50%;
-    color: var(--text-dim);
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.01));
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 2px 4px rgba(0, 0, 0, 0.4);
+    color: var(--text-muted);
+    border: 1px solid rgba(0, 0, 0, 0.5);
+    background: linear-gradient(180deg, #3a4659 0%, #232c3a 100%);
+    box-shadow:
+      var(--shadow-near),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.4);
+    transition: all var(--transition-smooth);
   }
 
   .chevron svg {
@@ -194,6 +213,11 @@
 
   .row:hover .chevron {
     color: var(--accent-cyan);
+    box-shadow:
+      var(--shadow-near),
+      0 0 8px rgba(0, 229, 255, 0.35),
+      inset 0 1px 0 rgba(255, 255, 255, 0.36),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.4);
   }
 
   @media (max-width: 620px) {

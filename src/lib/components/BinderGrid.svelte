@@ -105,23 +105,27 @@
     max-width: 760px;
     margin: 0 auto;
     padding: 3px;
-    border-radius: 14px;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0) 4%);
+    border-radius: var(--r-xl);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0) 4%),
+      #1a2230;
     box-shadow:
-      0 16px 34px rgba(0, 0, 0, 0.62),
-      inset 0 1px 0 rgba(255, 255, 255, 0.24),
-      inset 0 -2px 5px rgba(0, 0, 0, 0.6);
+      var(--shadow-deep),
+      inset 0px 1px 0px rgba(255, 255, 255, 0.4),
+      inset 0px -2px 5px rgba(0, 0, 0, 0.6);
   }
 
   .grid {
     display: grid;
     gap: 0.85rem;
     padding: 1.05rem;
-    border-radius: 12px;
+    border-radius: 10px;
+    /* matte page: fine horizontal grain, darkening away from the light */
     background:
       repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.012) 0 1px, transparent 1px 4px),
       linear-gradient(180deg, #1b2331 0%, #121924 55%, #0d141e 100%);
-    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.55);
+    box-shadow: inset 0px 2px 8px rgba(0, 0, 0, 0.55);
   }
 
   /* Every pocket is a recessed well: dark inset + a lip of light on top. */
@@ -134,15 +138,19 @@
     justify-content: center;
     gap: 0.3rem;
     padding: 0.55rem;
-    border-radius: 7px;
-    border: 1px solid rgba(0, 0, 0, 0.55);
-    background: linear-gradient(180deg, rgba(0, 0, 0, 0.34), rgba(0, 0, 0, 0.12));
+    border-radius: var(--r-md);
+    border: 1px solid rgba(0, 0, 0, 0.6);
+    background: rgba(0, 0, 0, 0.3);
     box-shadow:
-      inset 0 4px 9px rgba(0, 0, 0, 0.55),
-      inset 0 -1px 0 rgba(255, 255, 255, 0.06);
+      inset 0px 4px 9px rgba(0, 0, 0, 0.55),
+      inset 0px -1px 0px rgba(255, 255, 255, 0.06),
+      0px 1px 0px rgba(255, 255, 255, 0.08);
+    color: inherit;
     cursor: pointer;
     overflow: hidden;
-    transition: box-shadow 150ms var(--ease), border-color 150ms var(--ease);
+    transition:
+      box-shadow var(--transition-smooth),
+      border-color var(--transition-smooth);
   }
 
   .with-lines .pocket {
@@ -154,9 +162,9 @@
   button.pocket.empty:hover {
     border-color: rgba(0, 229, 255, 0.5);
     box-shadow:
-      inset 0 4px 9px rgba(0, 0, 0, 0.5),
-      inset 0 0 18px rgba(0, 229, 255, 0.14),
-      0 0 14px rgba(0, 229, 255, 0.16);
+      inset 0px 4px 9px rgba(0, 0, 0, 0.5),
+      inset 0px 0px 18px rgba(0, 229, 255, 0.14),
+      0px 0px 8px rgba(0, 229, 255, 0.3);
   }
 
   /* Reader view: an empty pocket is inert decoration, not a control. */

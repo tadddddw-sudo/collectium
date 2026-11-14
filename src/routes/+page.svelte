@@ -162,20 +162,24 @@
     display: flex;
     align-items: stretch;
     gap: 0.5rem;
+    /* One carved channel holding the input and its button. */
     padding: 5px;
-    border-radius: 9px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background: linear-gradient(180deg, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.16));
+    border-radius: var(--r-md);
+    border: 1px solid rgba(0, 0, 0, 0.6);
+    background: rgba(0, 0, 0, 0.3);
     box-shadow:
-      inset 0 2px 6px rgba(0, 0, 0, 0.6),
-      0 1px 0 rgba(255, 255, 255, 0.08);
+      inset 0px 3px 6px rgba(0, 0, 0, 0.5),
+      0px 1px 0px rgba(255, 255, 255, 0.1);
+    transition:
+      border-color var(--transition-smooth),
+      box-shadow var(--transition-smooth);
   }
 
   .search-field:focus-within {
-    border-color: rgba(0, 229, 255, 0.6);
+    border-color: var(--accent-cyan);
     box-shadow:
-      inset 0 2px 6px rgba(0, 0, 0, 0.6),
-      0 0 12px rgba(0, 229, 255, 0.3);
+      inset 0px 3px 6px rgba(0, 0, 0, 0.5),
+      0px 0px 8px rgba(0, 229, 255, 0.4);
   }
 
   .at {
@@ -196,8 +200,10 @@
     padding-left: 0.35rem;
   }
 
-  .search-field .input:focus {
+  .search-field .input:focus,
+  .search-field .input:focus-visible {
     box-shadow: none;
+    outline: none;
   }
 
   .search .notice {
@@ -220,8 +226,12 @@
     width: 68px;
     height: 68px;
     border-radius: 50%;
-    background: radial-gradient(circle at 34% 24%, rgba(255, 255, 255, 0.2), rgba(0, 0, 0, 0.35));
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), inset 0 -2px 6px rgba(0, 0, 0, 0.6);
+    /* a recessed cup the logo sits in, lit from directly above */
+    border: 1px solid rgba(0, 0, 0, 0.6);
+    background: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.12), rgba(0, 0, 0, 0.35) 70%);
+    box-shadow:
+      inset 0px 3px 6px rgba(0, 0, 0, 0.55),
+      0px 1px 0px rgba(255, 255, 255, 0.1);
     grid-row: span 2;
   }
 

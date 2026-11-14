@@ -182,18 +182,21 @@
     border-radius: var(--r-lg);
     z-index: 40;
     overflow: hidden;
-    transition: width 190ms var(--ease);
+    transition:
+      width var(--transition-smooth),
+      box-shadow var(--transition-smooth);
 
+    /* A tall slab of matte plastic: sheen on the top band, darker toward the
+       floor, crisp specular top edge, occluded bottom edge. */
     background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.09) 0%, rgba(255, 255, 255, 0) 20%),
-      linear-gradient(180deg, rgba(31, 40, 56, 0.96), rgba(13, 18, 27, 0.96));
-    backdrop-filter: blur(18px) saturate(130%);
-    -webkit-backdrop-filter: blur(18px) saturate(130%);
-    border: 1px solid rgba(255, 255, 255, 0.11);
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 120px),
+      linear-gradient(180deg, rgba(31, 40, 56, 0.97), rgba(15, 20, 30, 0.97));
+    border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow:
       var(--shadow-lift),
-      inset 0 1px 0 rgba(255, 255, 255, 0.32),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.65);
+      inset 0px 1px 0px rgba(255, 255, 255, 0.4),
+      inset 0px -1px 0px rgba(0, 0, 0, 0.6),
+      inset -1px 0 0 rgba(0, 0, 0, 0.35);
   }
 
   /* The rail expands over the content, like an Aero sidebar — no reflow. */
@@ -224,7 +227,7 @@
     min-width: 0;
     white-space: nowrap;
     opacity: 0;
-    transition: opacity 130ms var(--ease) 30ms;
+    transition: opacity var(--transition-smooth) 30ms;
   }
 
   .rail:hover .brand-text,
@@ -239,10 +242,9 @@
 
   .brand-text em {
     font-style: normal;
-    font-size: 0.62rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
+    font-size: 0.7rem;
     color: var(--text-dim);
+    text-shadow: var(--text-engrave);
   }
 
   .nav {
@@ -270,25 +272,37 @@
     text-shadow: var(--text-glow);
     white-space: nowrap;
     cursor: pointer;
-    transition: color 130ms, background 130ms, box-shadow 130ms, border-color 130ms;
+    transition: all var(--transition-smooth);
   }
 
+  /* Hover raises a plastic key out of the rail. */
   .nav-item:hover {
     color: var(--text-main);
     text-decoration: none;
     border-color: rgba(255, 255, 255, 0.1);
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.02));
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.26), 0 2px 6px rgba(0, 0, 0, 0.35);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.02));
+    box-shadow:
+      var(--shadow-near),
+      inset 0 1px 0 rgba(255, 255, 255, 0.28),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.4);
   }
 
+  .nav-item:active {
+    transform: translateY(1px);
+  }
+
+  /* Current route: a lit glass key — cyan backlight under a specular top. */
   .nav-item.active {
     color: #eafdff;
-    border-color: rgba(0, 229, 255, 0.42);
-    background: linear-gradient(180deg, rgba(0, 229, 255, 0.26), rgba(0, 88, 156, 0.18));
+    border-color: rgba(0, 229, 255, 0.45);
+    background:
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0) 50%),
+      linear-gradient(180deg, rgba(0, 229, 255, 0.28), rgba(0, 85, 255, 0.2));
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.36),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.4),
-      0 0 14px rgba(0, 229, 255, 0.22);
+      var(--shadow-near),
+      0 0 12px rgba(0, 229, 255, 0.25),
+      inset 0 1px 0 rgba(255, 255, 255, 0.45),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.45);
   }
 
   .nav-item.active::before {
@@ -325,7 +339,7 @@
     font-size: 0.84rem;
     font-weight: 550;
     opacity: 0;
-    transition: opacity 130ms var(--ease) 30ms;
+    transition: opacity var(--transition-smooth) 30ms;
   }
 
   .rail:hover .label,
@@ -366,14 +380,19 @@
     border-radius: 50%;
     font-size: 0.74rem;
     font-weight: 700;
-    color: #0b1a22;
+    color: #fff;
+    text-shadow: var(--text-glow);
     background: var(--accent-gradient);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 2px 5px rgba(0, 0, 0, 0.5);
+    border: 1px solid #0033aa;
+    box-shadow:
+      0 2px 5px rgba(0, 0, 0, 0.5),
+      inset 0 2px 2px rgba(255, 255, 255, 0.55),
+      inset 0 -2px 2px rgba(0, 0, 0, 0.35);
   }
 
   .me-name {
     opacity: 0;
-    transition: opacity 130ms var(--ease) 30ms;
+    transition: opacity var(--transition-smooth) 30ms;
   }
 
   .rail:hover .me-name,
