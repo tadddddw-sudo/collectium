@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Collectium — Profile</title>
+  <style>
+    * { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
+    body { margin: 0; background: #f4f4f5; color: #18181b; }
+    .container { max-width: 960px; margin: 0 auto; padding: 2rem 1rem; }
+    .profile-header { background: white; padding: 1.5rem 2rem; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .profile-header h1 { margin: 0; font-size: 1.6rem; }
+    .handle { color: #71717a; margin: 0.2rem 0 0.5rem; }
+    .btn { padding: 0.6rem 1rem; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; background: #3ecf8e; color: #09090b; text-decoration: none; font-size: 0.9rem; }
+    .btn-dark { background: #18181b; color: white; }
+    .btn-outline { background: transparent; border: 1px solid #d4d4d8; color: #18181b; }
+    .actions { display: flex; gap: 0.6rem; align-items: center; }
+    h2 { margin: 2rem 0 1rem; font-size: 1.25rem; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; }
+    .collection-card { background: white; border-radius: 10px; overflow: hidden; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.05); transition: transform 0.15s; }
+    .collection-card:hover { transform: translateY(-3px); }
+    .card-preview { height: 150px; background: #e4e4e7; display: flex; align-items: center; justify-content: center; padding: 0.75rem; }
+    .card-preview img { max-height: 100%; max-width: 100%; object-fit: contain; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.2)); }
+    .card-body { padding: 1rem; }
+    .card-body h3 { margin: 0.4rem 0 0.2rem; font-size: 1.05rem; }
+    .card-body p { margin: 0; color: #71717a; font-size: 0.85rem; }
+    .badge { font-size: 0.75rem; background: #dcfce7; color: #166534; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 600; }
+    .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; padding: 1rem; z-index: 50; }
+    .modal-box { background: white; padding: 1.5rem; border-radius: 12px; width: 100%; max-width: 400px; }
+    .form-group { margin-bottom: 0.9rem; }
+    .form-group label { display: block; font-size: 0.85rem; margin-bottom: 0.3rem; }
+    .form-group input, .form-group select { width: 100%; padding: 0.55rem; border: 1px solid #d4d4d8; border-radius: 6px; }
+    .row-inputs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="profile-header">
+      <div>
+        <h1 id="profile-name">Loading...</h1>
+        <div class="handle" id="profile-handle"></div>
+        <div id="profile-bio"></div>
+      </div>
+      <div class="actions">
+        <button id="master-qr-btn" class="btn btn-dark">📱 Profile QR Code</button>
+        <div id="owner-actions" style="display:none; gap:0.6rem;">
+          <button onclick="document.getElementById('create-modal').style.display='flex'" class="btn">+ New Collection</button>
+          <button id="logout-btn" class="btn btn-outline">Log Out</button>
+        </div>
+        <a id="guest-login-btn" href="login.html" class="btn" style="display:none;">Log In</a>
+      </div>
+    </div>
+
+    <h2>📖 Display Binders</h2>
+    <div id="binders-grid" class="grid"></div>
+
+    <h2>🏛️ Display Cases</h2>
+    <div id="cases-grid" class="grid"></div>
+  </div>
+
+  <!-- Master Profile QR Modal -->
+  <div id="qr-modal" class="modal" onclick="if(event.target===this)this.style.display='none'">
+    <div class="modal-box" style="text-align:center;">
+      <h3 style="margin-top:0;">Master Profile QR Code</h3>
+      <img id="qr-img" alt="Profile QR" style="width:220px;height:220px;" />
+      <input id="qr-url-input" readonly style="width:100%;padding:0.5rem;margin:0.8rem 0;border:1px solid #d4d4d8;border-radius:6px;font-size:0.8rem;" />
+      <button class="btn" onclick="navigator.clipboard.writeText(document.getElementById('qr-url-input').value)">Copy Profile Link</button>
+    </div>
+  </div>
+
+  <!-- New Collection Modal -->
+  <div id="create-modal" class="modal" onclick="if(event.target===this)this.style.display='none'">
+    <div class="modal-box">
+      <h3 style="margin-top:0;">Create Collection</h3>
+      <form id="new-col-form">
+        <div class="form-group">
+          <label>Type</label>
+          <select id="col-type">
+            <option value="binder">Display Binder (Custom Grid & Pages)</option>
+            <option value="display_case">Display Case (Transparent Memorabilia Showcase)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Title</label>
+          <input id="col-title" required placeholder="e.g. Vintage Holo Cards" />
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <input id="col-desc" placeholder="Optional description" />
+        </div>
+        <div id="binder-options">
+          <div class="row-inputs form-group">
+            <div><label>Pages</label><input type="number" id="col-pages" value="4" min="1" max="50" /></div>
+            <div><label>Rows</label><input type="number" id="col-rows" value="3" min="1" max="8" /></div>
+            <div><label>Cols</label><input type="number" id="col-cols" value="3" min="1" max="8" /></div>
+          </div>
+          <label style="font-size:0.85rem;display:flex;align-items:center;gap:0.4rem;margin-bottom:1rem;">
+            <input type="checkbox" id="col-grid" checked /> Show pocket grid lines
+          </label>
+        </div>
+        <button type="submit" class="btn" style="width:100%;">Create</button>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="./js/views/profileView.js"></script>
+</body>
+</html>
