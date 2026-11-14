@@ -19,13 +19,22 @@
   --bg-panel-solid: #1c2330;
   --bg-raised: rgba(42, 52, 70, 0.9);
 
-  /* --- dual-heritage accents ------------------------------------------- */
-  --accent-cyan: #00e5ff;
-  --accent-blue: #0055ff;
-  --accent-gradient: linear-gradient(180deg, #00e5ff 0%, #0055ff 100%);
-  --accent-soft: rgba(0, 229, 255, 0.14);
-  --accent-line: rgba(0, 229, 255, 0.55);
-  --accent-glow: 0 0 8px rgba(0, 229, 255, 0.4);
+  /* --- accents: the amber of the logo's isometric C -------------------- */
+  /* RGB triplets so shades can be written as rgb(var(--accent-rgb) / 0.4). */
+  --accent-rgb: 255 176 32;
+  --accent-deep-rgb: 219 136 2;
+  --accent: rgb(var(--accent-rgb));
+  --accent-deep: rgb(var(--accent-deep-rgb));
+  --accent-hover: #ffd27a;
+  --accent-border: #8c5701;
+  --accent-gradient: linear-gradient(180deg, #ffd36b 0%, #ff9f04 55%, #db8802 100%);
+  /* text on accent-filled surfaces: dark brown reads on amber, white doesn't */
+  --on-accent: #2a1600;
+  --on-accent-shadow: 0 1px 0 rgba(255, 236, 196, 0.55);
+  --accent-text: #ffe2ad; /* light text tinted with the accent (active rail key) */
+  --accent-soft: rgb(var(--accent-rgb) / 0.14);
+  --accent-line: rgb(var(--accent-rgb) / 0.55);
+  --accent-glow: 0 0 8px rgb(var(--accent-rgb) / 0.4);
 
   /* --- brand (the isometric C — consumed by Logo.svelte, do not change) - */
   --brand-1: #ff9f04;
@@ -76,7 +85,108 @@
   --rail-wide: 240px;
   --column: 768px;
 
+  /* --- themed surfaces (overridden by [data-theme='light']) -------------- */
+  --page-bloom: radial-gradient(circle at 50% 0%, #2a2216 0%, var(--bg-base) 70%);
+  --line: rgba(255, 255, 255, 0.1);
+  --well-bg: rgba(0, 0, 0, 0.3);
+  --well-border: rgba(0, 0, 0, 0.6);
+  --rail-bg:
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 120px),
+    linear-gradient(180deg, rgba(31, 40, 56, 0.97), rgba(15, 20, 30, 0.97));
+  --modal-bg:
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 50%),
+    linear-gradient(180deg, #232c3c 0%, #161d28 100%);
+  --veil: rgba(5, 8, 13, 0.76);
+  --ghost-bg: linear-gradient(180deg, #4a5568 0%, #2d3748 100%);
+  --ghost-bg-hover: linear-gradient(180deg, #566477 0%, #35404f 100%);
+  --ghost-border: #131a24;
+  --ghost-text: #e2e8f0;
+  --chip-bg: linear-gradient(180deg, #344155 0%, #222b3a 100%);
+  --knob-bg: linear-gradient(180deg, #3a4659 0%, #232c3a 100%);
+  --tag-bg: linear-gradient(180deg, rgba(38, 48, 64, 0.92), rgba(16, 22, 32, 0.92));
+  --binder-slab: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0) 4%), #1a2230;
+  --binder-page:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.012) 0 1px, transparent 1px 4px),
+    linear-gradient(180deg, #1b2331 0%, #121924 55%, #0d141e 100%);
+  --stage-bg:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0) 16%),
+    linear-gradient(180deg, #1a222f 0%, #101722 46%, #1d2531 50.6%, #2b3543 52%, #131a25 94%, #0d131c 100%);
+  --banner-bg:
+    radial-gradient(120% 140% at 20% -20%, rgb(var(--accent-rgb) / 0.26), transparent 55%),
+    radial-gradient(90% 120% at 90% 120%, rgb(var(--accent-deep-rgb) / 0.3), transparent 60%),
+    linear-gradient(160deg, #2c2a2a 0%, #171a22 55%, #0b111a 100%);
+  --scroll-thumb: #46586f;
+  --scroll-thumb-hover: #5b718c;
+
   color-scheme: dark;
+}
+
+/* ---------------------------- light theme ------------------------------ */
+/* Same light model (one source overhead), on warm pale plastic instead of
+   charcoal. Set by the sun/moon switch in the rail (lib/theme.js). */
+:root[data-theme='light'] {
+  --bg-base: #f3ede4;
+  --bg-deep: #e7dfd3;
+  --bg-shell: rgba(250, 246, 240, 0.97);
+  --bg-panel: rgba(255, 252, 247, 0.92);
+  --bg-panel-solid: #fffaf3;
+  --bg-raised: rgba(255, 255, 255, 0.95);
+
+  --accent-rgb: 214 128 0;
+  --accent-deep-rgb: 176 108 0;
+  --accent-hover: #a85f00;
+  --accent-text: #6a4200;
+
+  --text-main: #1f1a14;
+  --text-soft: #3b342b;
+  --text-muted: #5f574c;
+  --text-dim: #7a7064;
+  --text-glow: 0 1px 0 rgba(255, 255, 255, 0.7);
+  --text-glow-strong: 0 1px 0 rgba(255, 255, 255, 0.8);
+  --text-engrave: 0 1px 0 rgba(255, 255, 255, 0.85);
+
+  --edge-spec: inset 0px 1px 0px rgba(255, 255, 255, 0.9);
+  --edge-ao: inset 0px -1px 0px rgba(120, 90, 50, 0.18);
+  --edge-lip: 0px 1px 0px rgba(255, 255, 255, 0.8);
+  --gloss-sheen: linear-gradient(to bottom, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0) 100%);
+  --shadow-deep: 0px 10px 25px rgba(90, 64, 30, 0.16), 0px 2px 5px rgba(90, 64, 30, 0.12);
+  --shadow-lift: 0px 18px 40px rgba(90, 64, 30, 0.2), 0px 4px 10px rgba(90, 64, 30, 0.12);
+  --shadow-near: 0px 3px 6px rgba(90, 64, 30, 0.14), 0px 1px 2px rgba(90, 64, 30, 0.12);
+  --shadow-carve: inset 0px 3px 6px rgba(90, 64, 30, 0.16);
+
+  --page-bloom: radial-gradient(circle at 50% 0%, #fffaf2 0%, var(--bg-base) 70%);
+  --line: rgba(90, 64, 30, 0.14);
+  --well-bg: rgba(120, 90, 50, 0.07);
+  --well-border: rgba(120, 90, 50, 0.22);
+  --rail-bg:
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0) 120px),
+    linear-gradient(180deg, rgba(255, 251, 245, 0.97), rgba(238, 230, 218, 0.97));
+  --modal-bg:
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0) 50%),
+    linear-gradient(180deg, #fffaf3 0%, #f1e9dd 100%);
+  --veil: rgba(60, 45, 25, 0.45);
+  --ghost-bg: linear-gradient(180deg, #ffffff 0%, #e9e1d5 100%);
+  --ghost-bg-hover: linear-gradient(180deg, #ffffff 0%, #f2ebe1 100%);
+  --ghost-border: #cbbfae;
+  --ghost-text: #3b342b;
+  --chip-bg: linear-gradient(180deg, #ffffff 0%, #ece4d8 100%);
+  --knob-bg: linear-gradient(180deg, #ffffff 0%, #e6ddcf 100%);
+  --tag-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(236, 228, 216, 0.96));
+  --binder-slab: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0) 4%), #e8dfd1;
+  --binder-page:
+    repeating-linear-gradient(0deg, rgba(90, 64, 30, 0.02) 0 1px, transparent 1px 4px),
+    linear-gradient(180deg, #f8f2e9 0%, #efe7da 55%, #e8dfd1 100%);
+  --stage-bg:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0) 16%),
+    linear-gradient(180deg, #f6f0e6 0%, #ebe2d4 46%, #d9cdbb 50.6%, #cfc1ad 52%, #e9e0d2 94%, #e1d6c6 100%);
+  --banner-bg:
+    radial-gradient(120% 140% at 20% -20%, rgb(var(--accent-rgb) / 0.35), transparent 55%),
+    radial-gradient(90% 120% at 90% 120%, rgb(var(--accent-deep-rgb) / 0.3), transparent 60%),
+    linear-gradient(160deg, #fff6e6 0%, #f1e4cf 55%, #e6d5bb 100%);
+  --scroll-thumb: #c9bba6;
+  --scroll-thumb-hover: #b3a38c;
+
+  color-scheme: light;
 }
 
 /* ============================== base ================================== */
@@ -113,7 +223,7 @@ body {
   text-rendering: optimizeLegibility;
 
   /* The light source: a single overhead bloom falling off into charcoal-blue. */
-  background: radial-gradient(circle at 50% 0%, #1e293b 0%, var(--bg-base) 70%);
+  background: var(--page-bloom);
   background-color: var(--bg-base);
   background-attachment: fixed;
 }
@@ -134,14 +244,14 @@ p {
 }
 
 a {
-  color: var(--accent-cyan);
+  color: var(--accent);
   text-decoration: none;
-  text-shadow: 0 0 12px rgba(0, 229, 255, 0.28);
+  text-shadow: 0 0 12px rgb(var(--accent-rgb) / 0.28);
   transition: color var(--transition-smooth);
 }
 
 a:hover {
-  color: #7ef2ff;
+  color: var(--accent-hover);
 }
 
 button,
@@ -158,20 +268,20 @@ img {
 }
 
 ::selection {
-  background: rgba(0, 229, 255, 0.32);
-  color: #fff;
+  background: rgb(var(--accent-rgb) / 0.32);
+  color: var(--text-main);
 }
 
 /* Focus is drawn with an outline so no component box-shadow can erase it. */
 :focus-visible {
-  outline: 2px solid var(--accent-cyan);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
 /* Tactile scrollbars: a carved track with a raised plastic thumb. */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #3a4a63 transparent;
+  scrollbar-color: var(--scroll-thumb) transparent;
 }
 
 ::-webkit-scrollbar {
@@ -180,21 +290,21 @@ img {
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--well-bg);
   border-radius: 8px;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-carve);
 }
 
 ::-webkit-scrollbar-thumb {
   border-radius: 8px;
   border: 3px solid transparent;
   background-clip: content-box;
-  background-color: #46586f;
+  background-color: var(--scroll-thumb);
   box-shadow: var(--edge-spec), var(--edge-ao);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: #5b718c;
+  background-color: var(--scroll-thumb-hover);
 }
 
 /* ======================= tactile aero surfaces ======================== */
@@ -205,11 +315,8 @@ img {
   position: relative;
   background: var(--bg-panel);
   border-radius: var(--r-lg);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow:
-    var(--shadow-deep),
-    inset 0px 1px 0px rgba(255, 255, 255, 0.4),
-    inset 0px -1px 0px rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-deep), var(--edge-spec), var(--edge-ao);
   transition: box-shadow var(--transition-smooth);
 }
 
@@ -236,14 +343,14 @@ img {
 /* Denser slab for sidebars and toolbars. */
 .aero-solid {
   background: var(--gloss-sheen) 0 0 / 100% 30% no-repeat, var(--bg-shell);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: var(--shadow-lift), var(--edge-spec), inset 0 -1px 0 rgba(0, 0, 0, 0.6);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-lift), var(--edge-spec), var(--edge-ao);
 }
 
 /* Carved well: pockets, empty states, sunken trays. */
 .aero-well {
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(0, 0, 0, 0.6);
+  background: var(--well-bg);
+  border: 1px solid var(--well-border);
   border-radius: var(--r-md);
   box-shadow: var(--shadow-carve), var(--edge-lip);
 }
@@ -269,19 +376,19 @@ img {
   gap: 0.45rem;
   padding: 10px 24px;
   border-radius: var(--r-md);
-  border: 1px solid #0033aa;
+  border: 1px solid var(--accent-border);
   background: var(--accent-gradient);
-  color: #fff;
+  color: var(--on-accent);
   font-size: 0.875rem;
-  font-weight: 600;
+  font-weight: 650;
   line-height: 1.15;
   letter-spacing: 0.01em;
-  text-shadow: var(--text-glow);
+  text-shadow: var(--on-accent-shadow);
   cursor: pointer;
   white-space: nowrap;
   box-shadow:
     0px 4px 6px rgba(0, 0, 0, 0.4),
-    0px 0px 8px rgba(0, 229, 255, 0.3),
+    0px 0px 8px rgb(var(--accent-rgb) / 0.3),
     inset 0px 2px 3px rgba(255, 255, 255, 0.6),
     inset 0px -2px 3px rgba(0, 0, 0, 0.4);
   transition: all var(--transition-smooth);
@@ -305,7 +412,7 @@ img {
   filter: brightness(1.1);
   box-shadow:
     0px 6px 12px rgba(0, 0, 0, 0.5),
-    0px 0px 12px rgba(0, 229, 255, 0.5),
+    0px 0px 12px rgb(var(--accent-rgb) / 0.5),
     inset 0px 2px 3px rgba(255, 255, 255, 0.7),
     inset 0px -2px 3px rgba(0, 0, 0, 0.4);
 }
@@ -334,10 +441,10 @@ img {
 
 /* Secondary: matte graphite plastic, same light model, no glow. */
 .btn-ghost {
-  border-color: #131a24;
-  background: linear-gradient(180deg, #4a5568 0%, #2d3748 100%);
-  color: #e2e8f0;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+  border-color: var(--ghost-border);
+  background: var(--ghost-bg);
+  color: var(--ghost-text);
+  text-shadow: var(--text-glow);
   box-shadow:
     0px 4px 6px rgba(0, 0, 0, 0.4),
     inset 0px 1px 0px rgba(255, 255, 255, 0.28),
@@ -349,7 +456,7 @@ img {
 }
 
 .btn-ghost:hover:not(:disabled) {
-  background: linear-gradient(180deg, #566477 0%, #35404f 100%);
+  background: var(--ghost-bg-hover);
   box-shadow:
     0px 6px 12px rgba(0, 0, 0, 0.5),
     inset 0px 1px 0px rgba(255, 255, 255, 0.34),
@@ -361,6 +468,7 @@ img {
   border-color: #5e120c;
   background: linear-gradient(180deg, #f07a68 0%, #d6432f 50%, #9c2215 100%);
   color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
   box-shadow:
     0px 4px 6px rgba(0, 0, 0, 0.4),
     0px 0px 8px rgba(224, 93, 75, 0.3),
@@ -385,8 +493,8 @@ img {
   height: 2rem;
   padding: 0;
   border-radius: var(--r-md);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02));
+  border: 1px solid var(--line);
+  background: var(--ghost-bg);
   color: var(--text-muted);
   cursor: pointer;
   box-shadow: var(--shadow-near), inset 0 1px 0 rgba(255, 255, 255, 0.22);
@@ -395,8 +503,8 @@ img {
 
 .btn-icon:hover {
   color: var(--text-main);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.05));
-  box-shadow: var(--shadow-near), inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 0 12px rgba(0, 229, 255, 0.2);
+  background: var(--ghost-bg-hover);
+  box-shadow: var(--shadow-near), inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 0 12px rgb(var(--accent-rgb) / 0.25);
 }
 
 .btn-sm {
@@ -413,17 +521,15 @@ img {
 /* `.input` is the legacy alias used across the markup. */
 .input-tactile,
 .input {
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(0, 0, 0, 0.6);
+  background: var(--well-bg);
+  border: 1px solid var(--well-border);
   border-radius: var(--r-sm);
   padding: 12px 16px;
   color: var(--text-main);
   width: 100%;
   box-sizing: border-box;
   text-shadow: var(--text-glow);
-  box-shadow:
-    inset 0px 3px 6px rgba(0, 0, 0, 0.5),
-    0px 1px 0px rgba(255, 255, 255, 0.1);
+  box-shadow: var(--shadow-carve), var(--edge-lip);
   transition:
     border-color var(--transition-smooth),
     box-shadow var(--transition-smooth);
@@ -438,10 +544,8 @@ img {
 .input-tactile:focus,
 .input:focus {
   outline: none;
-  border-color: var(--accent-cyan);
-  box-shadow:
-    inset 0px 3px 6px rgba(0, 0, 0, 0.5),
-    0px 0px 8px rgba(0, 229, 255, 0.4);
+  border-color: var(--accent);
+  box-shadow: var(--shadow-carve), 0px 0px 8px rgb(var(--accent-rgb) / 0.4);
 }
 
 select.input-tactile,
@@ -498,7 +602,7 @@ select.input option {
 .check-row input[type='checkbox'] {
   width: 1.05rem;
   height: 1.05rem;
-  accent-color: #00a8d8;
+  accent-color: var(--accent);
   cursor: pointer;
 }
 
@@ -514,8 +618,8 @@ input[type='range'] {
 input[type='range']::-webkit-slider-runnable-track {
   height: 8px;
   border-radius: 4px;
-  background: rgba(0, 0, 0, 0.4);
-  box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.6), var(--edge-lip);
+  background: var(--well-bg);
+  box-shadow: var(--shadow-carve), var(--edge-lip);
 }
 
 input[type='range']::-webkit-slider-thumb {
@@ -524,8 +628,8 @@ input[type='range']::-webkit-slider-thumb {
   height: 18px;
   margin-top: -5px;
   border-radius: 50%;
-  background: radial-gradient(circle at 50% 22%, #ffffff 0%, #8ff4ff 24%, #00b8e6 58%, #0055ff 100%);
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.6), 0 0 6px rgba(0, 229, 255, 0.35), inset 0 -2px 2px rgba(0, 0, 0, 0.3);
+  background: radial-gradient(circle at 50% 22%, #ffffff 0%, #ffe0a0 24%, #ff9f04 58%, #b06c00 100%);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.6), 0 0 6px rgb(var(--accent-rgb) / 0.35), inset 0 -2px 2px rgba(0, 0, 0, 0.3);
 }
 
 input[type='range']::-moz-range-track {
@@ -540,7 +644,7 @@ input[type='range']::-moz-range-thumb {
   height: 16px;
   border: 0;
   border-radius: 50%;
-  background: radial-gradient(circle at 50% 22%, #fff, #8ff4ff 24%, #00b8e6 58%, #0055ff);
+  background: radial-gradient(circle at 50% 22%, #fff, #ffe0a0 24%, #ff9f04 58%, #b06c00);
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.6);
 }
 
@@ -548,9 +652,9 @@ input[type='range']::-moz-range-thumb {
 input[type='file'] {
   width: 100%;
   padding: 0.45rem;
-  border: 1px solid rgba(0, 0, 0, 0.6);
+  border: 1px solid var(--well-border);
   border-radius: var(--r-sm);
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--well-bg);
   color: var(--text-muted);
   font-size: 0.8rem;
   box-shadow: var(--shadow-carve), var(--edge-lip);
@@ -559,10 +663,10 @@ input[type='file'] {
 input[type='file']::file-selector-button {
   margin-right: 0.7rem;
   padding: 0.4rem 0.8rem;
-  border: 1px solid #131a24;
+  border: 1px solid var(--ghost-border);
   border-radius: var(--r-sm);
-  background: linear-gradient(180deg, #4a5568, #2d3748);
-  color: #e2e8f0;
+  background: var(--ghost-bg);
+  color: var(--ghost-text);
   font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
@@ -583,8 +687,8 @@ input[type='file']::file-selector-button:hover {
   gap: 0.4rem;
   padding: 0.38rem 0.85rem;
   border-radius: var(--r-pill);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: linear-gradient(180deg, #344155 0%, #222b3a 100%);
+  border: 1px solid var(--line);
+  background: var(--chip-bg);
   color: var(--text-soft);
   font-size: 0.78rem;
   font-weight: 600;
@@ -596,10 +700,10 @@ input[type='file']::file-selector-button:hover {
 
 .chip:hover {
   color: var(--text-main);
-  border-color: rgba(0, 229, 255, 0.4);
+  border-color: rgb(var(--accent-rgb) / 0.4);
   box-shadow:
     var(--shadow-near),
-    0 0 10px rgba(0, 229, 255, 0.22),
+    0 0 10px rgb(var(--accent-rgb) / 0.22),
     inset 0 1px 0 rgba(255, 255, 255, 0.32),
     inset 0 -1px 0 rgba(0, 0, 0, 0.45);
 }
@@ -610,12 +714,12 @@ input[type='file']::file-selector-button:hover {
 
 .chip[aria-pressed='true'],
 .chip.is-active {
-  color: #fff;
-  border-color: #0033aa;
+  color: var(--on-accent);
+  border-color: var(--accent-border);
   background: var(--accent-gradient);
-  text-shadow: var(--text-glow);
+  text-shadow: var(--on-accent-shadow);
   box-shadow:
-    0 0 10px rgba(0, 229, 255, 0.4),
+    0 0 10px rgb(var(--accent-rgb) / 0.4),
     inset 0 2px 2px rgba(255, 255, 255, 0.55),
     inset 0 -2px 3px rgba(0, 0, 0, 0.35);
 }
@@ -648,9 +752,9 @@ input[type='file']::file-selector-button:hover {
 }
 
 .notice-info {
-  border: 1px solid rgba(0, 229, 255, 0.35);
-  background: linear-gradient(180deg, rgba(0, 229, 255, 0.16), rgba(0, 60, 100, 0.26));
-  color: #cbf7ff;
+  border: 1px solid rgb(var(--accent-rgb) / 0.35);
+  background: linear-gradient(180deg, rgb(var(--accent-rgb) / 0.16), rgba(0, 60, 100, 0.26));
+  color: var(--accent-text);
 }
 
 /* ============================== modal ================================= */
@@ -669,7 +773,7 @@ input[type='file']::file-selector-button:hover {
   /* A plain dimmed veil. A backdrop-filter here makes Chrome composite the
      page underneath *through* the panel, which shows as a stray band/line
      across the dialog. */
-  background: rgba(5, 8, 13, 0.76);
+  background: var(--veil);
   animation: modal-fade var(--transition-smooth);
 }
 
@@ -683,10 +787,8 @@ input[type='file']::file-selector-button:hover {
   margin: auto;
   padding: 1.5rem;
   border-radius: var(--r-lg);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background:
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 50%),
-    linear-gradient(180deg, #232c3c 0%, #161d28 100%);
+  border: 1px solid var(--line);
+  background: var(--modal-bg);
   box-shadow:
     0px 30px 70px rgba(0, 0, 0, 0.85),
     var(--shadow-deep),
@@ -711,8 +813,8 @@ input[type='file']::file-selector-button:hover {
   padding-bottom: 0.85rem;
   text-shadow: var(--text-glow-strong);
   /* engraved underline */
-  border-bottom: 1px solid rgba(0, 0, 0, 0.6);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--well-border);
+  box-shadow: var(--edge-lip);
 }
 
 /* Round glass bead. */
@@ -727,8 +829,8 @@ input[type='file']::file-selector-button:hover {
   display: grid;
   place-items: center;
   border-radius: 50%;
-  border: 1px solid rgba(0, 0, 0, 0.55);
-  background: linear-gradient(180deg, #4a5568 0%, #2a3342 100%);
+  border: 1px solid var(--ghost-border);
+  background: var(--ghost-bg);
   color: var(--text-soft);
   font-size: 1rem;
   line-height: 1;
@@ -738,11 +840,11 @@ input[type='file']::file-selector-button:hover {
 }
 
 .modal-close:hover {
-  color: #fff;
+  color: var(--text-main);
   filter: brightness(1.15);
   box-shadow:
     var(--shadow-near),
-    0 0 10px rgba(0, 229, 255, 0.3),
+    0 0 10px rgb(var(--accent-rgb) / 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.4),
     inset 0 -1px 2px rgba(0, 0, 0, 0.4);
 }
@@ -834,6 +936,21 @@ input[type='file']::file-selector-button:hover {
 /* Item art reads as a physical object: a cast shadow below, a faint rim light. */
 .item-art {
   filter: drop-shadow(0 15px 10px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 1px rgba(255, 255, 255, 0.25));
+}
+
+/* Status plates need darker ink on the pale theme. */
+:root[data-theme='light'] .notice-error {
+  color: #8a1f12;
+  background: linear-gradient(180deg, rgba(224, 93, 75, 0.16), rgba(224, 93, 75, 0.08));
+}
+
+:root[data-theme='light'] .notice-success {
+  color: #0f5a3a;
+  background: linear-gradient(180deg, rgba(62, 207, 142, 0.18), rgba(62, 207, 142, 0.08));
+}
+
+:root[data-theme='light'] .notice {
+  box-shadow: var(--shadow-near), inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
 @media (prefers-reduced-motion: reduce) {

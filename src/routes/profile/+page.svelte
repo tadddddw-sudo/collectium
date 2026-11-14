@@ -4,6 +4,8 @@
   import { page } from '$app/stores';
   import CollectionCard from '$lib/components/CollectionCard.svelte';
   import GuestLanding from '$lib/components/GuestLanding.svelte';
+  import ProfileEditModal from '$lib/components/ProfileEditModal.svelte';
+  import FeaturedModal from '$lib/components/FeaturedModal.svelte';
   import { CollectiumAPI } from '$lib/apiClient.js';
   import { userProfile, waitForAuth } from '$lib/stores.js';
   import { handleAuthFailure } from '$lib/session.js';
@@ -24,6 +26,10 @@
   let createError = '';
   let form = { type: 'binder', title: '', description: '', pages: 4, rows: 3, cols: 3, grid: true };
 
+  // Owner editing
+  let editOpen = false;
+  let featuredOpen = false;
+
   // Profile QR modal
   let qrOpen = false;
   let qrSrc = '';
@@ -33,6 +39,11 @@
   $: binders = collections.filter((c) => c.type === 'binder');
   $: cases = collections.filter((c) => c.type !== 'binder');
   $: pieces = collections.reduce((n, c) => n + (c.collection_items?.length || 0), 0);
+  // Chosen featured collections in order; without a choice, the first three.
+  $: featuredIds = profile?.featured_collection_ids || [];
+  $: featured = featuredIds.length
+    ? featuredIds.map((id) => collections.find((c) => c.id === id)).filter(Boolean)
+    : collections.slice(0, 3);
 
   onMount(() => {
     let active = true;
@@ -82,6 +93,10 @@
       collections = data.collections || [];
       needsUsername = false;
       loadedFor = data.profile.username;
+      // /settings links here with ?edit=1 to open the editor directly.
+      if ($page.url.searchParams.get('edit') === '1' && $userProfile?.id === data.profile.id) {
+        editOpen = true;
+      }
     } catch (err) {
       if (seq !== loadSeq) return;
       profile = null;
@@ -148,6 +163,28 @@
   function openCollection(col) {
     goto(`/collection?id=${col.id}`);
   }
+
+  /** Apply a fresh copy of the signed-in user's profile here and in the rail. */
+  function applyOwnProfile(next) {
+    profile = { ...profile, ...next };
+    userProfile.update((me) => (me ? { ...me, ...next } : me));
+  }
+
+  function onProfileSaved(event) {
+    const next = event.detail.profile;
+    const handleChanged = next.username !== profile.username;
+    applyOwnProfile(next);
+    editOpen = false;
+    if (handleChanged) {
+      loadedFor = next.username;
+      goto(`/profile?u=${encodeURIComponent(next.username)}`, { replaceState: true });
+    }
+  }
+
+  function onFeaturedSaved(event) {
+    applyOwnProfile(event.detail.profile);
+    featuredOpen = false;
+  }
 </script>
 
 <svelte:head>
@@ -162,22 +199,34 @@
   <div class="notice notice-error" role="alert">{error}</div>
   <a class="btn btn-ghost" href="/">Back to home</a>
 {:else if profile}
-  <section class="banner">
+  <section class="banner" class:has-image={profile.banner_url}>
+    {#if profile.banner_url}
+      <img class="banner-img" src={profile.banner_url} alt="" />
+    {/if}
     <div class="banner-glow" aria-hidden="true"></div>
     <div class="banner-tag">
       <span class="eyebrow">Collector</span>
       <span class="mono">{pieces} {pieces === 1 ? 'piece' : 'pieces'} · {collections.length} shelves</span>
     </div>
     {#if isOwner}
-      <button class="btn btn-ghost btn-sm banner-edit" type="button" on:click={showProfileQr}>
-        Profile QR
-      </button>
+      <div class="banner-edit">
+        <button class="btn btn-ghost btn-sm" type="button" on:click={() => (editOpen = true)}>
+          Edit banner
+        </button>
+        <button class="btn btn-ghost btn-sm" type="button" on:click={showProfileQr}>
+          Profile QR
+        </button>
+      </div>
     {/if}
   </section>
 
   <section class="identity aero">
     <div class="avatar" aria-hidden="true">
-      <span>{(profile.display_name || profile.username || '?').slice(0, 1).toUpperCase()}</span>
+      {#if profile.avatar_url}
+        <img src={profile.avatar_url} alt="" />
+      {:else}
+        <span>{(profile.display_name || profile.username || '?').slice(0, 1).toUpperCase()}</span>
+      {/if}
     </div>
     <div class="who">
       <h1>{profile.display_name || profile.username}</h1>
@@ -185,6 +234,7 @@
     </div>
     <div class="identity-actions">
       {#if isOwner}
+        <button class="btn btn-ghost" type="button" on:click={() => (editOpen = true)}>Edit profile</button>
         <button class="btn" type="button" on:click={openCreate}>New collection</button>
       {:else if !$userProfile}
         <a class="btn" href={`/login?next=${encodeURIComponent(`/profile?u=${profile.username}`)}`}>Sign in</a>
@@ -193,14 +243,32 @@
   </section>
 
   <section class="bio aero">
-    <p>{profile.bio || 'This collector has not written a bio yet.'}</p>
+    {#if profile.bio}
+      <p>{profile.bio}</p>
+    {:else}
+      <p class="dim">
+        {isOwner ? 'Tell visitors what you collect.' : 'This collector has not written a bio yet.'}
+      </p>
+    {/if}
+    {#if isOwner}
+      <button class="btn btn-ghost btn-sm bio-edit" type="button" on:click={() => (editOpen = true)}>
+        {profile.bio ? 'Edit bio' : 'Add a bio'}
+      </button>
+    {/if}
   </section>
 
   {#if collections.length}
     <section class="featured">
-      <span class="eyebrow">Featured collections</span>
+      <div class="featured-head">
+        <span class="eyebrow">Featured collections</span>
+        {#if isOwner}
+          <button class="btn btn-ghost btn-sm" type="button" on:click={() => (featuredOpen = true)}>
+            Change
+          </button>
+        {/if}
+      </div>
       <div class="chips">
-        {#each collections.slice(0, 3) as col (col.id)}
+        {#each featured as col (col.id)}
           <a class="chip" href={`/collection?id=${col.id}`}>{col.title}</a>
         {/each}
       </div>
@@ -298,6 +366,24 @@
   </div>
 {/if}
 
+{#if editOpen && profile && isOwner}
+  <ProfileEditModal
+    {profile}
+    on:close={() => (editOpen = false)}
+    on:saved={onProfileSaved}
+    on:imageChanged={(e) => applyOwnProfile(e.detail.profile)}
+  />
+{/if}
+
+{#if featuredOpen && profile && isOwner}
+  <FeaturedModal
+    {collections}
+    {featuredIds}
+    on:close={() => (featuredOpen = false)}
+    on:saved={onFeaturedSaved}
+  />
+{/if}
+
 {#if qrOpen}
   <div class="modal" role="presentation" on:click|self={() => (qrOpen = false)}>
     <div class="modal-box qr-box" role="dialog" aria-modal="true" aria-labelledby="qr-title">
@@ -320,15 +406,32 @@
     height: 190px;
     border-radius: var(--r-lg);
     overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background:
-      radial-gradient(120% 140% at 20% -20%, rgba(0, 229, 255, 0.22), transparent 55%),
-      radial-gradient(90% 120% at 90% 120%, rgba(0, 85, 255, 0.28), transparent 60%),
-      linear-gradient(160deg, #23324a 0%, #131a26 55%, #0b111a 100%);
+    border: 1px solid var(--line);
+    background: var(--banner-bg);
     box-shadow:
       var(--shadow-deep),
-      inset 0px 1px 0px rgba(255, 255, 255, 0.4),
+      var(--edge-spec),
       inset 0px -1px 0px rgba(0, 0, 0, 0.6);
+  }
+
+  .banner-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* a dark scrim keeps the tag readable over a photo */
+  .banner.has-image .banner-tag {
+    padding: 0.45rem 0.65rem;
+    border-radius: var(--r-md);
+    background: rgba(10, 8, 5, 0.55);
+  }
+
+  .banner.has-image .banner-tag .eyebrow,
+  .banner.has-image .banner-tag .mono {
+    color: #f6efe4;
   }
 
   /* the Aero glint sweeping across the banner */
@@ -360,6 +463,8 @@
     position: absolute;
     right: 1rem;
     top: 1rem;
+    display: flex;
+    gap: 0.4rem;
   }
 
   .identity {
@@ -381,16 +486,17 @@
     border-radius: 50%;
     font-size: 1.7rem;
     font-weight: 700;
+    overflow: hidden;
     /* a glossy bead set into a dark bezel */
-    color: #fff;
+    color: var(--on-accent);
     background: var(--accent-gradient);
-    border: 1px solid #0033aa;
+    border: 1px solid var(--accent-border);
     box-shadow:
       0px 8px 20px rgba(0, 0, 0, 0.6),
-      0px 0px 12px rgba(0, 229, 255, 0.3),
+      0px 0px 12px rgb(var(--accent-rgb) / 0.3),
       inset 0px 3px 4px rgba(255, 255, 255, 0.6),
       inset 0px -4px 6px rgba(0, 0, 0, 0.4),
-      0 0 0 4px rgba(15, 20, 30, 0.9);
+      0 0 0 4px var(--bg-panel-solid);
     text-shadow: var(--text-glow);
   }
 
@@ -407,12 +513,21 @@
 
   .handle {
     font-size: 0.8rem;
-    color: var(--accent-cyan);
-    text-shadow: 0 0 10px rgba(0, 229, 255, 0.4);
+    color: var(--accent);
+    text-shadow: 0 0 10px rgb(var(--accent-rgb) / 0.4);
+  }
+
+  .avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
 
   .identity-actions {
     flex: none;
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
   }
 
   .bio {
@@ -421,6 +536,19 @@
     font-size: 0.88rem;
     line-height: 1.6;
     color: var(--text-soft);
+    /* keep the line breaks the collector typed */
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+  }
+
+  .bio-edit {
+    margin-top: 0.7rem;
+  }
+
+  .featured-head {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
   }
 
   .shelves {
@@ -493,7 +621,7 @@
     }
 
     .identity-actions .btn {
-      width: 100%;
+      flex: 1;
     }
   }
 </style>

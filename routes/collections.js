@@ -4,7 +4,13 @@ import { supabase, createAuthClient } from '../supabaseClient.js';
 import { sendAuthError } from '../sessions.js';
 import { asyncRouter } from '../asyncRouter.js';
 import { uploadLimiter, writeLimiter } from '../rateLimits.js';
-import { pickFields, isPlainObject, parseJsonField } from '../validation.js';
+import {
+  pickFields,
+  isPlainObject,
+  parseJsonField,
+  detectImageType,
+  UUID_PATTERN,
+} from '../validation.js';
 
 const router = asyncRouter();
 const upload = multer({
@@ -22,30 +28,6 @@ const COLLECTION_FIELDS = {
   is_public: (v) => typeof v === 'boolean',
   sort_order: Number.isInteger,
 };
-
-/**
- * Detect PNG/WebP from the file's first bytes. The client-supplied mimetype is
- * not trusted: the file is served publicly with the Content-Type we store, so
- * an "image" that is really HTML or SVG would be a stored XSS vector.
- */
-function detectImageType(buffer) {
-  if (
-    buffer.length >= 8 &&
-    buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
-  ) {
-    return { mime: 'image/png', ext: 'png' };
-  }
-  if (
-    buffer.length >= 12 &&
-    buffer.subarray(0, 4).toString('latin1') === 'RIFF' &&
-    buffer.subarray(8, 12).toString('latin1') === 'WEBP'
-  ) {
-    return { mime: 'image/webp', ext: 'webp' };
-  }
-  return null;
-}
-
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // GET /api/collections/:id -> Fetch single binder/display case + all its items
 router.get('/:id', async (req, res) => {

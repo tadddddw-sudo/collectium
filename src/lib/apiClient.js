@@ -27,13 +27,16 @@ function fail(res, data) {
   return err;
 }
 
-/** Sign in. Resolves to `{ profile }`; the session lives in an httpOnly cookie. */
-export async function login(email, password) {
+/**
+ * Sign in. Resolves to `{ profile }`; the session lives in an httpOnly cookie.
+ * `remember` keeps the session for 30 days; otherwise it ends when the browser closes.
+ */
+export async function login(email, password, remember = false) {
   const res = await fetch(`${API_ROOT}/auth/login`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, remember: remember === true }),
   });
   const data = await parseBody(res);
   if (!res.ok) throw fail(res, data);

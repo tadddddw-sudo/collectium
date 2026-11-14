@@ -1,20 +1,53 @@
 <script>
-  import { goto } from '$app/navigation';
+  import { onMount } from 'svelte';
+  import { goto, replaceState } from '$app/navigation';
   import { page } from '$app/stores';
   import { CollectiumAPI } from '$lib/apiClient.js';
   import { userProfile } from '$lib/stores.js';
 
   let email = '';
   let password = '';
+  let remember = false;
   let error = '';
+  let errorCode = '';
+  let info = '';
   let busy = false;
+  let resending = false;
+
+  onMount(() => {
+    // Arriving from the confirmation email: /login?confirmed=1#access_token=…&type=signup
+    const hash = new URLSearchParams(location.hash.slice(1));
+    if (hash.get('error_code') === 'otp_expired') {
+      error = 'That confirmation link has expired. Sign in to get a new one.';
+    } else if ($page.url.searchParams.get('confirmed') || hash.get('type') === 'signup') {
+      info = 'Email confirmed. You can log in now.';
+    }
+    // Drop the tokens from the address bar; the app signs in with the password instead.
+    if (location.hash) replaceState(`${location.pathname}${location.search}`, {});
+  });
+
+  async function resend() {
+    resending = true;
+    try {
+      const data = await CollectiumAPI.resendConfirmation(email.trim());
+      error = '';
+      errorCode = '';
+      info = data.message;
+    } catch (err) {
+      error = err.message || 'Could not send the email.';
+    } finally {
+      resending = false;
+    }
+  }
 
   async function submit(event) {
     event.preventDefault();
     error = '';
+    errorCode = '';
+    info = '';
     busy = true;
     try {
-      const data = await CollectiumAPI.login(email, password);
+      const data = await CollectiumAPI.login(email, password, remember);
       const profile = data.profile ?? data.user;
       userProfile.set(profile);
       const next = $page.url.searchParams.get('next');
@@ -24,6 +57,7 @@
       goto(destination, { replaceState: true });
     } catch (err) {
       error = err.message || 'Could not sign in.';
+      errorCode = err.code || '';
     } finally {
       busy = false;
     }
@@ -40,8 +74,18 @@
   </header>
 
   <form on:submit={submit}>
+    {#if info}
+      <p class="notice notice-success" role="status">{info}</p>
+    {/if}
     {#if error}
-      <p class="notice notice-error" role="alert">{error}</p>
+      <div class="notice notice-error" role="alert">
+        <span>{error}</span>
+        {#if errorCode === 'EMAIL_NOT_CONFIRMED'}
+          <button class="btn btn-ghost btn-sm resend" type="button" on:click={resend} disabled={resending}>
+            {resending ? 'Sending…' : 'Resend email'}
+          </button>
+        {/if}
+      </div>
     {/if}
 
     <div class="field">
@@ -72,6 +116,11 @@
       />
       <a class="forgot" href="/forgot-password">Forgot your password?</a>
     </div>
+
+    <label class="check-row remember">
+      <input type="checkbox" name="remember" bind:checked={remember} />
+      Keep me signed in
+    </label>
 
     <button class="btn btn-block" type="submit" disabled={busy}>
       {busy ? 'Signing in…' : 'Log in'}
@@ -111,6 +160,20 @@
     display: inline-block;
     margin-top: 0.45rem;
     font-size: 0.8rem;
+  }
+
+  .remember {
+    margin: 0.1rem 0 1rem;
+  }
+
+  .notice-error {
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .resend {
+    flex: none;
   }
 
   .switch {

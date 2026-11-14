@@ -2,11 +2,17 @@
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import Logo from './Logo.svelte';
+  import SiteFooter from './SiteFooter.svelte';
+  import CookieNotice from './CookieNotice.svelte';
   import { userProfile } from '$lib/stores.js';
   import { CollectiumAPI } from '$lib/apiClient.js';
+  import { theme, toggleTheme } from '$lib/theme.js';
 
   /** Auth screens render as a bare, centered card (no rail, no column). */
   export let bare = false;
+
+  $: isLight = $theme === 'light';
+  $: themeLabel = isLight ? 'Dark theme' : 'Light theme';
 
   $: me = $userProfile;
   $: path = $page.url.pathname;
@@ -53,7 +59,17 @@
       <span>Collectium</span>
     </a>
     <slot />
+    <button class="btn btn-ghost btn-sm theme-pill" type="button" on:click={toggleTheme}>
+      {#if isLight}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5Z" /></svg>
+      {:else}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4" /></svg>
+      {/if}
+      {themeLabel}
+    </button>
+    <SiteFooter />
   </div>
+  <CookieNotice />
 {:else}
   <div class="shell">
     <nav class="rail" aria-label="Main">
@@ -80,7 +96,8 @@
                 {:else if item.icon === 'shelf'}
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2.5" /><path d="M4 14.5h16M9.5 4v10.5" /></svg>
                 {:else if item.icon === 'gear'}
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><circle cx="12" cy="12" r="3" /><path d="M12 3.5v2.2M12 18.3v2.2M4.9 7.9l1.9 1.1M17.2 15l1.9 1.1M4.9 16.1l1.9-1.1M17.2 9l1.9-1.1" /></svg>
+                  <!-- eight-tooth gear with a centre hole -->
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M9.67 5.19 L10.38 2.54 L13.62 2.54 L14.33 5.19 L14.76 5.35 L15.17 5.53 L17.54 4.16 L19.84 6.46 L18.47 8.83 L18.65 9.24 L18.81 9.67 L21.46 10.38 L21.46 13.62 L18.81 14.33 L18.65 14.76 L18.47 15.17 L19.84 17.54 L17.54 19.84 L15.17 18.47 L14.76 18.65 L14.33 18.81 L13.62 21.46 L10.38 21.46 L9.67 18.81 L9.24 18.65 L8.83 18.47 L6.46 19.84 L4.16 17.54 L5.53 15.17 L5.35 14.76 L5.19 14.33 L2.54 13.62 L2.54 10.38 L5.19 9.67 L5.35 9.24 L5.53 8.83 L4.16 6.46 L6.46 4.16 L8.83 5.53 L9.24 5.35 Z" /><circle cx="12" cy="12" r="3" /></svg>
                 {:else}
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><circle cx="12" cy="8.6" r="3.6" /><path d="M5 19.4c1.4-3 4-4.5 7-4.5s5.6 1.5 7 4.5" /></svg>
                 {/if}
@@ -92,9 +109,31 @@
       </ul>
 
       <div class="rail-foot">
+        <button
+          class="nav-item as-button"
+          type="button"
+          on:click={toggleTheme}
+          aria-label={`Switch to ${themeLabel.toLowerCase()}`}
+          title={`Switch to ${themeLabel.toLowerCase()}`}
+        >
+          <span class="glyph" aria-hidden="true">
+            {#if isLight}
+              <!-- moon: switch to dark -->
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5Z" /></svg>
+            {:else}
+              <!-- sun: switch to light -->
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4" /><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4" /></svg>
+            {/if}
+          </span>
+          <span class="label">{themeLabel}</span>
+        </button>
         {#if me}
           <div class="me-chip" title={`@${me.username}`}>
-            <span class="avatar" aria-hidden="true">{(me.display_name || me.username || '?').slice(0, 1).toUpperCase()}</span>
+            {#if me.avatar_url}
+              <img class="avatar" src={me.avatar_url} alt="" />
+            {:else}
+              <span class="avatar" aria-hidden="true">{(me.display_name || me.username || '?').slice(0, 1).toUpperCase()}</span>
+            {/if}
             <span class="me-name mono">@{me.username}</span>
           </div>
           <button class="nav-item as-button" type="button" on:click={signOut}>
@@ -117,9 +156,11 @@
     <main class="shell-main">
       <div class="shell-column" class:wide={path === '/collection'}>
         <slot />
+        <SiteFooter />
       </div>
     </main>
   </div>
+  <CookieNotice />
 {/if}
 
 <style>
@@ -146,6 +187,15 @@
 
   .bare-brand:hover {
     text-decoration: none;
+  }
+
+  .theme-pill {
+    margin-top: 1.5rem;
+  }
+
+  .theme-pill svg {
+    width: 16px;
+    height: 16px;
   }
 
   /* ---------------- rail ---------------- */
@@ -188,15 +238,9 @@
 
     /* A tall slab of matte plastic: sheen on the top band, darker toward the
        floor, crisp specular top edge, occluded bottom edge. */
-    background:
-      linear-gradient(to bottom, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 120px),
-      linear-gradient(180deg, rgba(31, 40, 56, 0.97), rgba(15, 20, 30, 0.97));
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow:
-      var(--shadow-lift),
-      inset 0px 1px 0px rgba(255, 255, 255, 0.4),
-      inset 0px -1px 0px rgba(0, 0, 0, 0.6),
-      inset -1px 0 0 rgba(0, 0, 0, 0.35);
+    background: var(--rail-bg);
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow-lift), var(--edge-spec), var(--edge-ao);
   }
 
   /* The rail expands over the content, like an Aero sidebar — no reflow. */
@@ -293,14 +337,14 @@
 
   /* Current route: a lit glass key — cyan backlight under a specular top. */
   .nav-item.active {
-    color: #eafdff;
-    border-color: rgba(0, 229, 255, 0.45);
+    color: var(--accent-text);
+    border-color: rgb(var(--accent-rgb) / 0.45);
     background:
       linear-gradient(to bottom, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0) 50%),
-      linear-gradient(180deg, rgba(0, 229, 255, 0.28), rgba(0, 85, 255, 0.2));
+      linear-gradient(180deg, rgb(var(--accent-rgb) / 0.28), rgb(var(--accent-deep-rgb) / 0.2));
     box-shadow:
       var(--shadow-near),
-      0 0 12px rgba(0, 229, 255, 0.25),
+      0 0 12px rgb(var(--accent-rgb) / 0.25),
       inset 0 1px 0 rgba(255, 255, 255, 0.45),
       inset 0 -1px 0 rgba(0, 0, 0, 0.45);
   }
@@ -313,8 +357,8 @@
     bottom: 12px;
     width: 3px;
     border-radius: 0 3px 3px 0;
-    background: var(--accent-cyan);
-    box-shadow: 0 0 10px rgba(0, 229, 255, 0.9);
+    background: var(--accent);
+    box-shadow: 0 0 10px rgb(var(--accent-rgb) / 0.9);
   }
 
   .as-button {
@@ -353,8 +397,8 @@
     gap: 6px;
     margin-top: auto;
     padding-top: 8px;
-    border-top: 1px solid rgba(0, 0, 0, 0.55);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    border-top: 1px solid var(--well-border);
+    box-shadow: var(--edge-lip);
     flex: none;
   }
 
@@ -380,10 +424,11 @@
     border-radius: 50%;
     font-size: 0.74rem;
     font-weight: 700;
-    color: #fff;
-    text-shadow: var(--text-glow);
+    color: var(--on-accent);
+    text-shadow: var(--on-accent-shadow);
+    object-fit: cover;
     background: var(--accent-gradient);
-    border: 1px solid #0033aa;
+    border: 1px solid var(--accent-border);
     box-shadow:
       0 2px 5px rgba(0, 0, 0, 0.5),
       inset 0 2px 2px rgba(255, 255, 255, 0.55),

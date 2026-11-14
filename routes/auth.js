@@ -1,5 +1,7 @@
 import { supabase, createAuthClient, createIsolatedClient } from '../supabaseClient.js';
 import { asyncRouter } from '../asyncRouter.js';
+import { selectProfile, isUsernameTaken } from '../profileQueries.js';
+import { USERNAME_PATTERN } from '../validation.js';
 import {
   clearSessionCookies,
   setSessionCookies,
@@ -19,11 +21,11 @@ import {
 
 const router = asyncRouter();
 
-const PROFILE_COLUMNS = 'id, username, display_name, bio, avatar_url, created_at';
-
 async function loadProfile(accessToken, userId) {
   const userSupabase = createAuthClient(accessToken);
-  return userSupabase.from('profiles').select(PROFILE_COLUMNS).eq('id', userId).single();
+  return selectProfile((columns) =>
+    userSupabase.from('profiles').select(columns).eq('id', userId).single()
+  );
 }
 
 // Password policy: 8+ characters, a digit, an uppercase letter and a special character.
@@ -38,9 +40,6 @@ function passwordPolicyError(password) {
   return null;
 }
 
-// Usernames end up in profile URLs and share links, so keep them to a safe set.
-// Keep in sync with the pattern on the signup form.
-const USERNAME_PATTERN = /^[A-Za-z0-9_.-]{3,30}$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function cleanEmail(email) {
@@ -54,15 +53,19 @@ function cleanEmail(email) {
  * request's Host header: a forged Host would otherwise make Supabase email a
  * link to an attacker's site (as long as it is on the redirect allow list).
  */
-function passwordResetRedirect() {
+function appUrl(pathname) {
   if (!process.env.APP_URL) return undefined;
   try {
-    return new URL('/reset-password', process.env.APP_URL).toString();
+    return new URL(pathname, process.env.APP_URL).toString();
   } catch {
-    console.error('APP_URL is not a valid URL; password reset emails will use the Supabase Site URL.');
+    console.error('APP_URL is not a valid URL; auth emails will link to the Supabase Site URL.');
     return undefined;
   }
 }
+
+const passwordResetRedirect = () => appUrl('/reset-password');
+// Confirmation links land on the login page, which says the email is confirmed.
+const confirmEmailRedirect = () => appUrl('/login?confirmed=1');
 
 // POST /api/auth/signup
 router.post('/signup', signupLimiter, async (req, res) => {
@@ -85,30 +88,54 @@ router.post('/signup', signupLimiter, async (req, res) => {
   const passwordError = passwordPolicyError(password);
   if (passwordError) return res.status(400).json({ error: passwordError });
 
-  const { data: existing } = await supabase
-    .from('profiles')
-    .select('username')
-    .eq('username', username)
-    .maybeSingle();
-
-  if (existing) {
+  if (await isUsernameTaken(supabase, username)) {
     return res.status(400).json({ error: 'Username is already taken.' });
   }
 
   const { data, error } = await createIsolatedClient().auth.signUp({
     email,
     password,
-    // Record when the user accepted the Terms and Privacy Policy (stored in auth user metadata).
-    options: { data: { username, legal_accepted_at: new Date().toISOString() } },
+    options: {
+      // Record when the user accepted the Terms and Privacy Policy (stored in auth user metadata).
+      data: { username, legal_accepted_at: new Date().toISOString() },
+      emailRedirectTo: confirmEmailRedirect(),
+    },
   });
 
   if (error) return res.status(400).json({ error: error.message });
-  res.status(201).json({ user: data.user });
+  // With "Confirm email" on in Supabase there is no session until the link is clicked.
+  res.status(201).json({ user: data.user, needs_confirmation: !data.session });
 });
+
+// POST /api/auth/resend-confirmation { email } -> send the signup confirmation email again
+router.post(
+  '/resend-confirmation',
+  forgotPasswordIpLimiter,
+  forgotPasswordEmailLimiter,
+  async (req, res) => {
+    const email = cleanEmail(req.body?.email);
+    if (!email) return res.status(400).json({ error: 'Enter a valid email address.' });
+
+    const { error } = await createIsolatedClient().auth.resend({
+      type: 'signup',
+      email,
+      options: { emailRedirectTo: confirmEmailRedirect() },
+    });
+    if (error) {
+      console.error('[POST /auth/resend-confirmation] Supabase error:', error.status, error.message);
+    }
+    // Same answer either way, so this can't reveal which emails are registered.
+    res.json({
+      success: true,
+      message: 'If that account is waiting for confirmation, a new email is on its way.',
+    });
+  }
+);
 
 // POST /api/auth/login -> JSON for API clients, httpOnly cookies for the SPA
 router.post('/login', loginIpLimiter, loginAccountLimiter, async (req, res) => {
   const { email, password } = req.body || {};
+  const remember = req.body?.remember === true;
   if (typeof email !== 'string' || typeof password !== 'string' || !email || !password) {
     return res.status(400).json({ error: 'Enter your email and password.' });
   }
@@ -120,7 +147,15 @@ router.post('/login', loginIpLimiter, loginAccountLimiter, async (req, res) => {
     password,
   });
 
-  if (authError) return res.status(401).json({ error: authError.message });
+  if (authError) {
+    if (authError.code === 'email_not_confirmed') {
+      return res.status(401).json({
+        error: 'Confirm your email address first. Check your inbox for the link.',
+        code: 'EMAIL_NOT_CONFIRMED',
+      });
+    }
+    return res.status(401).json({ error: authError.message });
+  }
 
   const { data: profile, error: profileError } = await loadProfile(
     authData.session.access_token,
@@ -137,7 +172,7 @@ router.post('/login', loginIpLimiter, loginAccountLimiter, async (req, res) => {
 
   // Browsers get the session in httpOnly cookies. The JSON copy is for
   // non-browser API clients that send it back as a bearer token.
-  setSessionCookies(res, authData.session);
+  setSessionCookies(res, authData.session, { remember });
 
   res.json({
     user: authData.user,

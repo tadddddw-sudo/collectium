@@ -19,6 +19,11 @@
       location.replace(`/reset-password${location.hash}`);
       return;
     }
+    // Same for a signup confirmation link.
+    if (location.pathname !== '/login' && /[#&]type=signup(&|$)/.test(location.hash)) {
+      location.replace(`/login?confirmed=1${location.hash}`);
+      return;
+    }
     mounted = true;
     // Resolve the session exactly once; every page reads the store afterwards.
     (async () => {
