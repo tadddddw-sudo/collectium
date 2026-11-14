@@ -1,5 +1,6 @@
 import express from 'express';
 import { supabase, createAuthClient } from '../supabaseClient.js';
+import { sendAuthError } from '../sessions.js';
 
 const router = express.Router();
 
@@ -25,7 +26,7 @@ router.get('/:username', async (req, res) => {
     .order('sort_order', { ascending: true })
     .order('created_at', { ascending: false });
 
-  if (colErr) return res.status(400).json({ error: colErr.message });
+  if (colErr) return sendAuthError(res, colErr);
 
   res.json({ profile, collections });
 });

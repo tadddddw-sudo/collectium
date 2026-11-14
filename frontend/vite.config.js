@@ -1,0 +1,47 @@
+import { sveltekit } from '@sveltejs/kit/vite';
+import { defineConfig } from 'vite';
+
+const API_TARGET = process.env.API_TARGET || 'http://localhost:5000';
+
+/**
+ * Turn "backend is not running" (ECONNREFUSED) into a readable JSON error
+ * instead of an opaque 500, so the UI can tell the user what to do.
+ */
+function proxyErrorHandler(proxy) {
+  proxy.on('error', (err, _req, res) => {
+    if (!res || typeof res.writeHead !== 'function') return;
+    if (!res.headersSent) {
+      res.writeHead(502, { 'Content-Type': 'application/json' });
+    }
+    res.end(
+      JSON.stringify({
+        error: `Cannot reach the API server at ${API_TARGET}. Start it in another terminal with "node index.js" from the project root.`,
+        code: 'API_UNREACHABLE',
+        detail: err?.code || err?.message,
+      })
+    );
+  });
+}
+
+const proxy = {
+  '/api': {
+    target: API_TARGET,
+    changeOrigin: true,
+    // Same-origin through the proxy, so cookies flow without CORS games.
+    configure: proxyErrorHandler,
+  },
+};
+
+export default defineConfig({
+  plugins: [sveltekit()],
+  server: {
+    port: 5173,
+    strictPort: true,
+    proxy,
+  },
+  preview: {
+    port: 4173,
+    strictPort: true,
+    proxy,
+  },
+});

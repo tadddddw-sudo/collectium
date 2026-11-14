@@ -1,7 +1,29 @@
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 
-dotenv.config();
+// Load .env next to this file, not the shell's current directory, so
+// `node index.js` behaves the same from any folder.
+const here = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.join(here, '.env') });
+
+if (!process.env.SUPABASE_URL || !process.env.SUPABASE_KEY) {
+  console.error(
+    [
+      '',
+      'Missing backend configuration.',
+      `Expected ${path.join(here, '.env')} to define:`,
+      '  SUPABASE_URL=...',
+      '  SUPABASE_KEY=...',
+      '  PORT=5000',
+      '',
+      'Copy .env.example if it exists, or create the file with those three lines.',
+      '',
+    ].join('\n')
+  );
+  process.exit(1);
+}
 
 // Public/anonymous client for unauthenticated reads & auth calls
 export const supabase = createClient(

@@ -1,5 +1,6 @@
 import express from 'express';
 import { createAuthClient } from '../supabaseClient.js';
+import { sendAuthError } from '../sessions.js';
 
 const router = express.Router();
 
@@ -18,7 +19,7 @@ router.patch('/:id', async (req, res) => {
     .select()
     .single();
 
-  if (error) return res.status(400).json({ error: error.message });
+  if (error) return sendAuthError(res, error);
   res.json({ item: data });
 });
 
@@ -33,7 +34,7 @@ router.delete('/:id', async (req, res) => {
     .delete()
     .eq('id', req.params.id);
 
-  if (error) return res.status(400).json({ error: error.message });
+  if (error) return sendAuthError(res, error);
   res.json({ success: true });
 });
 

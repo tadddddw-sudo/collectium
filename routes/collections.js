@@ -2,6 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import crypto from 'crypto';
 import { supabase, createAuthClient } from '../supabaseClient.js';
+import { sendAuthError } from '../sessions.js';
 
 const router = express.Router();
 const upload = multer({
@@ -71,7 +72,7 @@ router.post('/', async (req, res) => {
     .select()
     .single();
 
-  if (error) return res.status(400).json({ error: error.message });
+  if (error) return sendAuthError(res, error);
   res.status(201).json({ collection: data });
 });
 
@@ -90,7 +91,7 @@ router.patch('/:id', async (req, res) => {
     .select()
     .single();
 
-  if (error) return res.status(400).json({ error: error.message });
+  if (error) return sendAuthError(res, error);
   res.json({ collection: data });
 });
 
@@ -105,7 +106,7 @@ router.delete('/:id', async (req, res) => {
     .delete()
     .eq('id', req.params.id);
 
-  if (error) return res.status(400).json({ error: error.message });
+  if (error) return sendAuthError(res, error);
   res.json({ success: true });
 });
 
@@ -132,7 +133,7 @@ router.post('/:id/items', upload.single('image'), async (req, res) => {
       upsert: false,
     });
 
-  if (uploadErr) return res.status(400).json({ error: uploadErr.message });
+  if (uploadErr) return sendAuthError(res, uploadErr);
 
   const { data: urlData } = userSupabase.storage
     .from('collectibles')
@@ -153,7 +154,7 @@ router.post('/:id/items', upload.single('image'), async (req, res) => {
     .select()
     .single();
 
-  if (dbErr) return res.status(400).json({ error: dbErr.message });
+  if (dbErr) return sendAuthError(res, dbErr);
   res.status(201).json({ item });
 });
 
