@@ -1,8 +1,8 @@
-import express from 'express';
 import { supabase, createAuthClient } from '../supabaseClient.js';
 import { sendAuthError } from '../sessions.js';
+import { asyncRouter } from '../asyncRouter.js';
 
-const router = express.Router();
+const router = asyncRouter();
 
 // GET /api/profiles/:username -> Fetch profile + their binders & display cases
 router.get('/:username', async (req, res) => {

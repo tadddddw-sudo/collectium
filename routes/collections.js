@@ -1,19 +1,60 @@
-import express from 'express';
 import multer from 'multer';
 import crypto from 'crypto';
 import { supabase, createAuthClient } from '../supabaseClient.js';
 import { sendAuthError } from '../sessions.js';
+import { asyncRouter } from '../asyncRouter.js';
+import { uploadLimiter, writeLimiter } from '../rateLimits.js';
+import { pickFields, isPlainObject, parseJsonField } from '../validation.js';
 
-const router = express.Router();
+const router = asyncRouter();
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: 5 * 1024 * 1024, files: 1, fields: 20, fieldSize: 16 * 1024 },
 });
+
+const COLLECTION_TYPES = ['binder', 'display_case'];
+
+/** The fields a client may set on a collection, and how to check each one. */
+const COLLECTION_FIELDS = {
+  title: (v) => typeof v === 'string' && v.trim().length > 0 && v.length <= 120,
+  description: (v) => typeof v === 'string' && v.length <= 2000,
+  layout_config: isPlainObject,
+  is_public: (v) => typeof v === 'boolean',
+  sort_order: Number.isInteger,
+};
+
+/**
+ * Detect PNG/WebP from the file's first bytes. The client-supplied mimetype is
+ * not trusted: the file is served publicly with the Content-Type we store, so
+ * an "image" that is really HTML or SVG would be a stored XSS vector.
+ */
+function detectImageType(buffer) {
+  if (
+    buffer.length >= 8 &&
+    buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+  ) {
+    return { mime: 'image/png', ext: 'png' };
+  }
+  if (
+    buffer.length >= 12 &&
+    buffer.subarray(0, 4).toString('latin1') === 'RIFF' &&
+    buffer.subarray(8, 12).toString('latin1') === 'WEBP'
+  ) {
+    return { mime: 'image/webp', ext: 'webp' };
+  }
+  return null;
+}
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // GET /api/collections/:id -> Fetch single binder/display case + all its items
 router.get('/:id', async (req, res) => {
   const token = req.headers.authorization?.split(' ')[1];
   const client = token ? createAuthClient(token) : supabase;
+
+  if (!UUID_PATTERN.test(req.params.id)) {
+    return res.status(404).json({ error: 'Collection not found.' });
+  }
 
   const { data: collection, error } = await client
     .from('collections')
@@ -22,7 +63,10 @@ router.get('/:id', async (req, res) => {
     .single();
 
   if (error) {
-    // Surface the REAL error — this tells you which of the 5 causes it is.
+    // PGRST116 = "0 or >1 rows" (RLS filtered it out). Everything else is a real failure.
+    if (error.code === 'PGRST116') {
+      return res.status(404).json({ error: 'Collection not found.' });
+    }
     console.error('[GET /collections/:id] supabase error:', {
       code: error.code,
       message: error.message,
@@ -30,11 +74,7 @@ router.get('/:id', async (req, res) => {
       hint: error.hint,
       token: !!token,
     });
-    // PGRST116 = "0 or >1 rows" (RLS filtered it out). Everything else is a real failure.
-    if (error.code === 'PGRST116') {
-      return res.status(404).json({ error: 'Collection not found.' });
-    }
-    return res.status(500).json({ error: error.message, code: error.code });
+    return res.status(500).json({ error: 'Could not load the collection.', code: error.code });
   }
   if (!collection) {
     return res.status(404).json({ error: 'Collection not found.' });
@@ -44,7 +84,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/collections -> Create a new Binder or Display Case
-router.post('/', async (req, res) => {
+router.post('/', writeLimiter, async (req, res) => {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ error: 'Unauthorized' });
 
@@ -52,7 +92,23 @@ router.post('/', async (req, res) => {
   const { data: { user }, error: authErr } = await userSupabase.auth.getUser();
   if (authErr || !user) return res.status(401).json({ error: 'Invalid token' });
 
-  const { title, description, type, layout_config, is_public } = req.body;
+  const { title, description, type, layout_config, is_public } = req.body || {};
+
+  if (!COLLECTION_TYPES.includes(type)) {
+    return res.status(400).json({ error: 'Type must be "binder" or "display_case".' });
+  }
+  if (!COLLECTION_FIELDS.title(title)) {
+    return res.status(400).json({ error: 'Title is required (up to 120 characters).' });
+  }
+  if (description !== undefined && !COLLECTION_FIELDS.description(description)) {
+    return res.status(400).json({ error: 'Description must be text up to 2000 characters.' });
+  }
+  if (layout_config !== undefined && !isPlainObject(layout_config)) {
+    return res.status(400).json({ error: 'layout_config must be an object.' });
+  }
+  if (is_public !== undefined && typeof is_public !== 'boolean') {
+    return res.status(400).json({ error: 'is_public must be true or false.' });
+  }
 
   const defaultLayout =
     type === 'binder'
@@ -77,16 +133,18 @@ router.post('/', async (req, res) => {
 });
 
 // PATCH /api/collections/:id -> Update grid dimensions, page count, toggle grid, or title
-router.patch('/:id', async (req, res) => {
+router.patch('/:id', writeLimiter, async (req, res) => {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ error: 'Unauthorized' });
 
-  const userSupabase = createAuthClient(token);
-  const updates = { ...req.body, updated_at: new Date().toISOString() };
+  // Only listed fields: never let a client rewrite id, user_id, created_at...
+  const { updates, error: fieldError } = pickFields(req.body, COLLECTION_FIELDS);
+  if (fieldError) return res.status(400).json({ error: fieldError });
 
+  const userSupabase = createAuthClient(token);
   const { data, error } = await userSupabase
     .from('collections')
-    .update(updates)
+    .update({ ...updates, updated_at: new Date().toISOString() })
     .eq('id', req.params.id)
     .select()
     .single();
@@ -96,7 +154,7 @@ router.patch('/:id', async (req, res) => {
 });
 
 // DELETE /api/collections/:id
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', writeLimiter, async (req, res) => {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ error: 'Unauthorized' });
 
@@ -111,25 +169,46 @@ router.delete('/:id', async (req, res) => {
 });
 
 // POST /api/collections/:id/items -> Upload transparent PNG + create slot/case item
-router.post('/:id/items', upload.single('image'), async (req, res) => {
+router.post('/:id/items', uploadLimiter, upload.single('image'), async (req, res) => {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ error: 'Unauthorized' });
   if (!req.file) return res.status(400).json({ error: 'Image file is required.' });
+
+  const collectionId = req.params.id;
+  if (!UUID_PATTERN.test(collectionId)) {
+    return res.status(404).json({ error: 'Collection not found.' });
+  }
+
+  const imageType = detectImageType(req.file.buffer);
+  if (!imageType) return res.status(400).json({ error: 'Image must be a PNG or WebP file.' });
+
+  const { name, description, page_number, slot_index } = req.body;
+  const positionData = parseJsonField(req.body.position_data);
+  if (positionData === undefined) {
+    return res.status(400).json({ error: 'position_data must be a JSON object.' });
+  }
 
   const userSupabase = createAuthClient(token);
   const { data: { user }, error: authErr } = await userSupabase.auth.getUser();
   if (authErr || !user) return res.status(401).json({ error: 'Invalid token' });
 
-  const collectionId = req.params.id;
-  const { name, description, page_number, slot_index, position_data } = req.body;
+  // Upload only into a collection the caller owns, so nobody can attach items
+  // to someone else's binder (or fill storage under someone else's collection id).
+  const { data: owned, error: ownErr } = await userSupabase
+    .from('collections')
+    .select('id')
+    .eq('id', collectionId)
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (ownErr) return sendAuthError(res, ownErr);
+  if (!owned) return res.status(404).json({ error: 'Collection not found.' });
 
-  const fileExt = req.file.mimetype === 'image/webp' ? 'webp' : 'png';
-  const filePath = `${user.id}/${collectionId}/${crypto.randomUUID()}.${fileExt}`;
+  const filePath = `${user.id}/${collectionId}/${crypto.randomUUID()}.${imageType.ext}`;
 
   const { error: uploadErr } = await userSupabase.storage
     .from('collectibles')
     .upload(filePath, req.file.buffer, {
-      contentType: req.file.mimetype,
+      contentType: imageType.mime,
       upsert: false,
     });
 
@@ -144,12 +223,15 @@ router.post('/:id/items', upload.single('image'), async (req, res) => {
     .insert({
       collection_id: collectionId,
       user_id: user.id,
-      name: name || 'Untitled Item',
-      description: description || '',
+      name: typeof name === 'string' && name.trim() ? name.slice(0, 120) : 'Untitled Item',
+      description: typeof description === 'string' ? description.slice(0, 2000) : '',
       image_url: urlData.publicUrl,
-      page_number: page_number ? Number(page_number) : 1,
-      slot_index: slot_index !== undefined && slot_index !== '' ? Number(slot_index) : null,
-      position_data: position_data ? JSON.parse(position_data) : { x: 50, y: 50, scale: 1, z_index: 1 },
+      page_number: Number.isInteger(Number(page_number)) && Number(page_number) > 0 ? Number(page_number) : 1,
+      slot_index:
+        slot_index !== undefined && slot_index !== '' && Number.isInteger(Number(slot_index))
+          ? Number(slot_index)
+          : null,
+      position_data: positionData ?? { x: 50, y: 50, scale: 1, z_index: 1 },
     })
     .select()
     .single();

@@ -45,6 +45,16 @@ export const CollectiumAPI = {
       body: JSON.stringify({ username, email, password, accepted_terms: acceptedTerms === true }),
     }).then(handleResponse),
 
+  forgotPassword: (email) =>
+    request('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
+
+  /** `link` is `{ token_hash }` or `{ access_token, refresh_token }` from the reset email. */
+  resetPassword: (password, link) =>
+    request('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ ...link, password }),
+    }),
+
   deleteAccount: (password) =>
     request('/auth/account', { method: 'DELETE', body: JSON.stringify({ password }) }),
 

@@ -25,30 +25,40 @@ if (!process.env.SUPABASE_URL || !process.env.SUPABASE_KEY) {
   process.exit(1);
 }
 
-// Public/anonymous client for unauthenticated reads & auth calls
-export const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_KEY
-);
+// The server is shared by every visitor, so no client may keep a session
+// between requests. Timers for auto-refresh would also leak per request.
+const SERVER_AUTH_OPTIONS = {
+  persistSession: false,
+  autoRefreshToken: false,
+  detectSessionInUrl: false,
+};
+
+// Public/anonymous client for unauthenticated reads and stateless checks such as
+// `auth.getUser(token)`.
+//
+// NEVER call a session-creating method on it (signInWithPassword, signUp,
+// refreshSession, setSession, verifyOtp, ...). Supabase keeps the resulting
+// session in memory even with persistSession: false, and every later query on
+// this client would then run as that user. Use createIsolatedClient() instead.
+export const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY, {
+  auth: SERVER_AUTH_OPTIONS,
+});
 
 // Creates a scoped client acting on behalf of a logged-in user (enforces RLS)
 export function createAuthClient(accessToken) {
-  return createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_KEY,
-    {
-      global: {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      },
-    }
-  );
+  return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY, {
+    auth: SERVER_AUTH_OPTIONS,
+    global: {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    },
+  });
 }
 
-// A throwaway anon client with no stored session, for one-off auth checks
-// (e.g. re-verifying a password) that must not touch the shared client's state.
+// A throwaway anon client for one request's auth flow (sign in, sign up,
+// refresh, password reset). Its session dies with the request.
 export function createIsolatedClient() {
   return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY, {
-    auth: { persistSession: false, autoRefreshToken: false },
+    auth: SERVER_AUTH_OPTIONS,
   });
 }
 

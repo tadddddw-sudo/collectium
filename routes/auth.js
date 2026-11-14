@@ -1,13 +1,23 @@
-import express from 'express';
 import { supabase, createAuthClient, createIsolatedClient } from '../supabaseClient.js';
+import { asyncRouter } from '../asyncRouter.js';
 import {
   clearSessionCookies,
   setSessionCookies,
+  decodeJwtPayload,
   ACCESS_COOKIE,
   REFRESH_COOKIE,
 } from '../sessions.js';
+import {
+  loginIpLimiter,
+  loginAccountLimiter,
+  signupLimiter,
+  forgotPasswordIpLimiter,
+  forgotPasswordEmailLimiter,
+  resetPasswordLimiter,
+  sensitiveActionLimiter,
+} from '../rateLimits.js';
 
-const router = express.Router();
+const router = asyncRouter();
 
 const PROFILE_COLUMNS = 'id, username, display_name, bio, avatar_url, created_at';
 
@@ -28,15 +38,49 @@ function passwordPolicyError(password) {
   return null;
 }
 
-// POST /api/auth/signup
-router.post('/signup', async (req, res) => {
-  const { username, email, password } = req.body;
+// Usernames end up in profile URLs and share links, so keep them to a safe set.
+// Keep in sync with the pattern on the signup form.
+const USERNAME_PATTERN = /^[A-Za-z0-9_.-]{3,30}$/;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-  if (req.body.accepted_terms !== true) {
+function cleanEmail(email) {
+  if (typeof email !== 'string') return null;
+  const trimmed = email.trim();
+  return trimmed.length <= 254 && EMAIL_PATTERN.test(trimmed) ? trimmed : null;
+}
+
+/**
+ * Where the reset email should send people. Taken from APP_URL, never from the
+ * request's Host header: a forged Host would otherwise make Supabase email a
+ * link to an attacker's site (as long as it is on the redirect allow list).
+ */
+function passwordResetRedirect() {
+  if (!process.env.APP_URL) return undefined;
+  try {
+    return new URL('/reset-password', process.env.APP_URL).toString();
+  } catch {
+    console.error('APP_URL is not a valid URL; password reset emails will use the Supabase Site URL.');
+    return undefined;
+  }
+}
+
+// POST /api/auth/signup
+router.post('/signup', signupLimiter, async (req, res) => {
+  const { username, password } = req.body || {};
+  const email = cleanEmail(req.body?.email);
+
+  if (req.body?.accepted_terms !== true) {
     return res
       .status(400)
       .json({ error: 'You need to accept the Terms of Service and Privacy Policy.' });
   }
+
+  if (typeof username !== 'string' || !USERNAME_PATTERN.test(username)) {
+    return res.status(400).json({
+      error: 'Username must be 3–30 characters: letters, numbers, dots, dashes or underscores.',
+    });
+  }
+  if (!email) return res.status(400).json({ error: 'Enter a valid email address.' });
 
   const passwordError = passwordPolicyError(password);
   if (passwordError) return res.status(400).json({ error: passwordError });
@@ -51,7 +95,7 @@ router.post('/signup', async (req, res) => {
     return res.status(400).json({ error: 'Username is already taken.' });
   }
 
-  const { data, error } = await supabase.auth.signUp({
+  const { data, error } = await createIsolatedClient().auth.signUp({
     email,
     password,
     // Record when the user accepted the Terms and Privacy Policy (stored in auth user metadata).
@@ -63,11 +107,16 @@ router.post('/signup', async (req, res) => {
 });
 
 // POST /api/auth/login -> JSON for API clients, httpOnly cookies for the SPA
-router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
+router.post('/login', loginIpLimiter, loginAccountLimiter, async (req, res) => {
+  const { email, password } = req.body || {};
+  if (typeof email !== 'string' || typeof password !== 'string' || !email || !password) {
+    return res.status(400).json({ error: 'Enter your email and password.' });
+  }
 
-  const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-    email,
+  // A fresh client per login. Signing in on the shared client would make every
+  // later guest request on this server run as this user.
+  const { data: authData, error: authError } = await createIsolatedClient().auth.signInWithPassword({
+    email: email.trim(),
     password,
   });
 
@@ -86,7 +135,8 @@ router.post('/login', async (req, res) => {
     });
   }
 
-  // The SPA never sees the token: it rides in an httpOnly cookie.
+  // Browsers get the session in httpOnly cookies. The JSON copy is for
+  // non-browser API clients that send it back as a bearer token.
   setSessionCookies(res, authData.session);
 
   res.json({
@@ -131,7 +181,7 @@ router.post('/logout', async (req, res) => {
     // Best effort: revoke the refresh token server-side. Clearing the cookies
     // below is what actually signs the browser out, so failure is not fatal.
     try {
-      const client = createAuthClient(token);
+      const client = createIsolatedClient();
       await client.auth.setSession({ access_token: token, refresh_token: refreshToken });
       await client.auth.signOut();
     } catch {
@@ -140,6 +190,102 @@ router.post('/logout', async (req, res) => {
   }
 
   clearSessionCookies(res);
+  res.json({ success: true });
+});
+
+// POST /api/auth/forgot-password { email } -> email a reset link
+//
+// Always answers the same way, whether or not the address has an account, so
+// this endpoint can't be used to find out who is registered.
+router.post(
+  '/forgot-password',
+  forgotPasswordIpLimiter,
+  forgotPasswordEmailLimiter,
+  async (req, res) => {
+    const email = cleanEmail(req.body?.email);
+    if (!email) return res.status(400).json({ error: 'Enter a valid email address.' });
+
+    const { error } = await createIsolatedClient().auth.resetPasswordForEmail(email, {
+      redirectTo: passwordResetRedirect(),
+    });
+    if (error) {
+      // Log it (e.g. Supabase's own email rate limit, SMTP problems) but don't
+      // tell the caller anything that depends on the account.
+      console.error('[POST /auth/forgot-password] Supabase error:', error.status, error.message);
+    }
+
+    res.json({
+      success: true,
+      message: 'If an account exists for that email, a password reset link is on its way.',
+    });
+  }
+);
+
+// How long after clicking the email link the user has to choose a new password.
+const RECOVERY_WINDOW_SECONDS = 60 * 60;
+
+/** True when the access token came from a password-recovery link clicked within the window. */
+function isFreshRecoverySession(accessToken) {
+  const amr = decodeJwtPayload(accessToken)?.amr;
+  if (!Array.isArray(amr)) return false;
+  const now = Math.floor(Date.now() / 1000);
+  return amr.some(
+    (entry) =>
+      (entry?.method === 'recovery' || entry?.method === 'otp') &&
+      Number(entry.timestamp) > now - RECOVERY_WINDOW_SECONDS
+  );
+}
+
+// POST /api/auth/reset-password -> set a new password from a reset link
+//
+// Body: { password, token_hash }                  (custom email template, ?token_hash=...)
+//   or: { password, access_token, refresh_token } (default template, #access_token=...)
+router.post('/reset-password', resetPasswordLimiter, async (req, res) => {
+  const { password, token_hash: tokenHash, access_token: accessToken, refresh_token: refreshToken } =
+    req.body || {};
+  const invalidLink = () =>
+    res.status(400).json({
+      error: 'This reset link is invalid or has expired. Request a new one.',
+      code: 'INVALID_RESET_LINK',
+    });
+
+  const passwordError = passwordPolicyError(password);
+  if (passwordError) return res.status(400).json({ error: passwordError });
+
+  const client = createIsolatedClient();
+
+  if (typeof tokenHash === 'string' && tokenHash) {
+    const { data, error } = await client.auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' });
+    if (error || !data?.session) return invalidLink();
+  } else if (typeof accessToken === 'string' && typeof refreshToken === 'string') {
+    // setSession validates the token with Supabase before we trust its claims.
+    const { data, error } = await client.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
+    if (error || !data?.session) return invalidLink();
+    // Only a session from the reset email may set a password without the old
+    // one. A normal (e.g. stolen) login session must not.
+    if (!isFreshRecoverySession(data.session.access_token)) return invalidLink();
+  } else {
+    return invalidLink();
+  }
+
+  const { error: updateError } = await client.auth.updateUser({ password });
+  if (updateError) {
+    // e.g. "New password should be different from the old password."
+    return res.status(400).json({ error: updateError.message });
+  }
+
+  // Sign out every device, including whoever may have been using the old
+  // password, and the recovery session itself.
+  try {
+    await client.auth.signOut({ scope: 'global' });
+  } catch (err) {
+    console.error('[POST /auth/reset-password] global sign-out failed:', err.message);
+  }
+  clearSessionCookies(res);
+
   res.json({ success: true });
 });
 
@@ -175,7 +321,7 @@ async function listUserImagePaths(client, userId) {
 }
 
 // DELETE /api/auth/account -> permanently delete the signed-in user's account, data and images
-router.delete('/account', async (req, res) => {
+router.delete('/account', sensitiveActionLimiter, async (req, res) => {
   const token = req.accessToken;
   if (!token) {
     return res.status(401).json({ error: 'Please sign in again.', code: 'AUTH_REQUIRED' });
@@ -195,11 +341,15 @@ router.delete('/account', async (req, res) => {
 
   // Re-check the password so a stolen or forgotten-open session can't delete the account.
   // A separate client keeps the shared anon client's session state untouched.
-  const { error: verifyError } = await createIsolatedClient().auth.signInWithPassword({
+  const verifyClient = createIsolatedClient();
+  const { error: verifyError } = await verifyClient.auth.signInWithPassword({
     email: user.email,
     password,
   });
   if (verifyError) return res.status(403).json({ error: 'Password is incorrect.' });
+  // That check created a session of its own; don't leave it lying around.
+  // scope 'local' revokes only that session, not the user's other devices.
+  verifyClient.auth.signOut({ scope: 'local' }).catch(() => {});
 
   const userClient = createAuthClient(token);
 

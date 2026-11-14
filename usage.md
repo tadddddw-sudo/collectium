@@ -43,6 +43,15 @@ SUPABASE_KEY=<your-anon-key>
 folder you launch it from. If the file is missing, the server stops with a
 message telling you exactly which variables are missing.
 
+Optional settings:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `APP_URL` | unset | Public origin, e.g. `https://collectium.example`. Password reset emails link to `APP_URL/reset-password`. Without it Supabase uses the project's Site URL and the app forwards the link. |
+| `TRUST_PROXY` | unset | Number of reverse-proxy hops in front of Node (usually `1`). Required behind a proxy, or every visitor shares one rate-limit bucket. Leave unset if Node is exposed directly. |
+| `CORS_ORIGINS` | unset | Comma-separated origins allowed to make credentialed cross-origin API calls. The SPA is same-origin and needs none. |
+| `COOKIE_SECURE` | on in production | Set `false` only for a production deployment served over plain http. |
+
 ## 3. Install dependencies (once)
 
 ```bash
@@ -95,6 +104,8 @@ taken port fails loudly instead of silently moving to 5174.
   collections.
 - `/signup` — create an account.
 - `/login` — sign in.
+- `/forgot-password` — request a password reset email.
+- `/reset-password` — where the reset email lands; choose a new password.
 - `/profile?u=<username>` — a collector's banner, bio and shelves.
 - `/collection?id=<uuid>` — a binder or display case.
 - `/collection?id=<uuid>&item=<uuid>` — opens one item's share dialog (QR code).
@@ -113,7 +124,10 @@ there are no image assets.
 ```
 index.js              Express: static SPA + /api routes + SPA fallback
 sessions.js           cookie sessions, bearer-token compatibility
-supabaseClient.js     Supabase clients (anon + per-user)
+supabaseClient.js     Supabase clients (anon + per-user + per-request isolated)
+rateLimits.js         express-rate-limit limiters
+asyncRouter.js        Router that forwards async errors to the error handler
+validation.js         field allowlists for PATCH bodies
 routes/               auth.js · profiles.js · collections.js · items.js
 src/
   app.html            SvelteKit HTML shell
@@ -148,8 +162,8 @@ Supabase for a session, then stores the tokens in **httpOnly cookies**:
 - `httpOnly` — JavaScript cannot read them, so XSS cannot steal the session.
 - `SameSite=Lax` — sent on same-site requests (same origin in production, same
   origin through the dev proxy).
-- `Secure` is off on localhost (plain http) and can be enabled in production
-  with `NODE_ENV=production COOKIE_SECURE=true`.
+- `Secure` is on whenever `NODE_ENV=production` (opt out with
+  `COOKIE_SECURE=false`) and off in development, where localhost is plain http.
 
 The frontend never writes tokens or profiles to `localStorage`. The browser
 holds the cookies, and the in-memory `userProfile` store holds the profile while
@@ -232,7 +246,7 @@ npm start         # Express serves dist/ and the API on one origin
 
 `npm run preview` (`:4173`) is only a local check of the build. For a real
 deployment, run `npm start` behind a TLS-terminating reverse proxy and set
-`NODE_ENV=production COOKIE_SECURE=true`.
+`NODE_ENV=production TRUST_PROXY=1 APP_URL=https://<your-host>`.
 
 ## API reference
 
@@ -243,17 +257,49 @@ deployment, run `npm start` behind a TLS-terminating reverse proxy and set
 | POST | `/api/auth/login` | – | sets cookies, returns `{user,session,profile}` |
 | GET | `/api/auth/me` | cookie/bearer | `{profile}` or `{profile:null}` |
 | POST | `/api/auth/logout` | cookie/bearer | clears cookies |
+| POST | `/api/auth/forgot-password` | – | `{email}`; same answer whether or not the account exists |
+| POST | `/api/auth/reset-password` | reset link | `{password, token_hash}` or `{password, access_token, refresh_token}`; signs out every session |
 | DELETE | `/api/auth/account` | cookie/bearer | `{password}`; deletes images, rows and the auth user |
 | GET | `/api/profiles/:username` | optional | profile + collections |
 | GET | `/api/collections/:id` | optional | collection + items |
 | POST | `/api/collections` | required | create binder/case |
-| PATCH | `/api/collections/:id` | required | title / `layout_config` |
+| PATCH | `/api/collections/:id` | required | only `title`, `description`, `layout_config`, `is_public`, `sort_order` |
 | DELETE | `/api/collections/:id` | required | delete collection |
-| POST | `/api/collections/:id/items` | required | multipart upload |
-| PATCH | `/api/items/:id` | required | `position_data`, slot |
+| POST | `/api/collections/:id/items` | required | multipart upload; PNG or WebP only (checked by content), own collections only |
+| PATCH | `/api/items/:id` | required | only `name`, `description`, `page_number`, `slot_index`, `position_data` |
 | DELETE | `/api/items/:id` | required | delete item |
 
 "required" routes accept either the session cookie or a bearer token.
+
+## Rate limits
+
+Limits are per IP unless noted, kept in memory (per process, reset on
+restart). Exceeding one returns `429` with `{error, code: "RATE_LIMITED"}` and
+`RateLimit` headers. With several server instances, move them to a shared store
+such as Redis (see `rateLimits.js`).
+
+| What | Limit |
+|---|---|
+| All `/api` requests | 600 / 15 min |
+| Failed logins | 10 / 15 min per IP, 30 / hour per account |
+| Signups | 5 / hour |
+| Password reset emails | 5 / hour per IP, 3 / hour per email address |
+| Password reset submissions | 10 / 15 min |
+| Account deletion | 5 / 15 min |
+| Image uploads | 60 / 15 min |
+| Collection and item edits | 300 / 15 min |
+
+## Password reset setup
+
+In the Supabase dashboard (Authentication → URL Configuration), add
+`https://<your-host>/reset-password` (and `http://localhost:5000/reset-password`
+for development) to **Redirect URLs**, and set `APP_URL` to match. The default
+"Reset Password" email template works as is. If you change it to
+`{{ .SiteURL }}/reset-password?token_hash={{ .TokenHash }}&type=recovery`, the
+page and API handle that form too.
+
+Reset links work once and expire (Supabase default: 1 hour). After a reset the
+server signs the user out of every device.
 
 ## Account deletion setup
 
