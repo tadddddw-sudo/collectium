@@ -1,9 +1,9 @@
 /**
  * Cookie-backed sessions for the SPA.
  *
- * The API still accepts `Authorization: Bearer <token>` so the legacy pages in
- * public/ keep working. The SPA uses an httpOnly cookie instead, so no token is
- * ever stored in localStorage by the new frontend.
+ * The API also accepts `Authorization: Bearer <token>` for non-browser API
+ * clients. The SPA uses an httpOnly cookie instead, so no token is ever stored
+ * in localStorage.
  */
 import { supabase, isAuthError } from './supabaseClient.js';
 

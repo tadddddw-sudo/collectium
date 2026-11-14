@@ -91,8 +91,8 @@ router.get('/me', async (req, res) => {
     return res.json({ profile: null });
   }
 
-  // Legacy clients (public/*.html) authenticate with a bearer header. Give them
-  // a cookie session too, so migrating to the SPA does not force a re-login.
+  // Bearer clients (scripts, native apps) get a cookie session too, so they can
+  // switch to the browser without signing in again.
   if (!req.cookies?.[ACCESS_COOKIE]) {
     setSessionCookies(res, { access_token: token, expires_in: 3600 });
   }

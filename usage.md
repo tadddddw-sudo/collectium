@@ -1,25 +1,26 @@
 # Collectium — how to run it
 
-There are **two servers** in this repo. They do different jobs and both must be
-running:
+One repository, one `package.json`, one server. Express serves both the API and
+the SvelteKit single-page app.
 
-| # | What | Folder | Port | Started with |
-|---|------|--------|------|--------------|
-| 1 | Express API + Supabase + the old HTML pages | repository root | **5000** | `node index.js` |
-| 2 | SvelteKit app (the new frontend) | `frontend/` | **5173** | `npm run dev` |
-
-The SvelteKit app has no API of its own. It sends every `/api/...` request to the
-Express server through a Vite dev proxy, so the browser only ever talks to
-`localhost:5173` and cookies work as if everything were one site.
+| What | Folder | Port | Started with |
+|---|---|---|---|
+| Express API + SvelteKit app | repository root | **5000** | `npm start` |
 
 ```
-browser ──▶ localhost:5173  (SvelteKit, Vite)
+browser ──▶ localhost:5000  (Express)
+                ├─ /api/*  ──▶ routes/* (Supabase)
+                └─ /*      ──▶ dist/ (SvelteKit SPA)
+```
+
+For development you can instead run the Vite dev server on `:5173`; it proxies
+`/api` to the Express API on `:5000`, so cookies stay same-site.
+
+```
+browser ──▶ localhost:5173  (Vite + SvelteKit, hot reload)
                 │
                 └─ /api/* proxied ──▶ localhost:5000 (Express + Supabase)
 ```
-
-`node index.js` alone gives you `http://localhost:5000`. That is only the API and
-the legacy pages — **not** the new app. The new app is on `:5173`.
 
 ---
 
@@ -30,7 +31,7 @@ the legacy pages — **not** the new app. The new app is on `:5173`.
 
 ## 2. Environment file
 
-Create or edit `.env` in the repository root (not inside `frontend/`):
+Create or edit `.env` in the repository root:
 
 ```env
 PORT=5000
@@ -38,38 +39,29 @@ SUPABASE_URL=https://<your-project>.supabase.co
 SUPABASE_KEY=<your-anon-key>
 ```
 
-`.env` is loaded relative to `index.js`, so the backend works no matter which
-folder you launch it from. If the file is missing, the backend now stops with a
-message telling you exactly which variables are missing instead of failing later.
+`.env` is loaded relative to `index.js`, so the server works no matter which
+folder you launch it from. If the file is missing, the server stops with a
+message telling you exactly which variables are missing.
 
 ## 3. Install dependencies (once)
 
 ```bash
-# repository root — backend
 npm install
-
-# new frontend
-cd frontend
-npm install
-cd ..
 ```
 
-## 4. Start the backend — terminal 1
-
-From the **repository root**:
+## 4. Production-style run
 
 ```bash
-node index.js
+npm run build     # SvelteKit SPA -> dist/
+npm start         # Express on :5000 serves the API and dist/
 ```
+
+Open **http://localhost:5000**.
 
 Expected output:
 
 ```
-  Collectium API   http://localhost:5000
-  Legacy pages     http://localhost:5000/index.html
-
-  The SvelteKit app runs separately:
-    cd frontend && npm run dev   ->  http://localhost:5173
+  Collectium   http://localhost:5000
 ```
 
 Quick check that it is alive:
@@ -79,36 +71,66 @@ curl http://localhost:5000/api/health
 # {"ok":true,"service":"collectium-api"}
 ```
 
-## 5. Start the frontend — terminal 2
+The server falls back to `dist/index.html` for any non-`/api` path, so
+`/profile?u=…` and `/collection?id=…` survive a page reload. If `dist/` is
+missing, `/` answers with a 503 telling you to run `npm run build`.
 
-From the **`frontend/` folder**:
+## 5. Development with hot reload — two terminals
 
 ```bash
-cd frontend
+# terminal 1 — API on :5000
+npm start
+
+# terminal 2 — Vite dev server on :5173
 npm run dev
 ```
 
-Expected output:
-
-```
-VITE v5.x  ready
-➜  Local:   http://localhost:5173/
-```
-
-Open **http://localhost:5173**.
-
-`npm run dev` uses `strictPort: true`, so if 5173 is taken it fails loudly
-instead of silently moving to 5174.
+Open **http://localhost:5173**. `vite.config.js` proxies `/api` →
+`http://localhost:5000` (override with `API_TARGET`). `strictPort: true` means a
+taken port fails loudly instead of silently moving to 5174.
 
 ## 6. Use it
 
-- `/` — guest landing: type a handle to view that collector, or sign in.
+- `/` — home: look up a collector by handle, and (when signed in) see your own
+  collections.
 - `/signup` — create an account.
 - `/login` — sign in.
-- `/profile?u=<username>` — a collector's binders and display cases.
+- `/profile?u=<username>` — a collector's banner, bio and shelves.
 - `/collection?id=<uuid>` — a binder or display case.
 - `/collection?id=<uuid>&item=<uuid>` — opens one item's share dialog (QR code).
-- `http://localhost:5000/*.html` — the old vanilla-JS pages still work.
+- `/settings` — account details, profile QR, sign out.
+
+The interface is a Windows-Aero/Frutiger-Aero dark skin (glossy cyan buttons,
+glass slabs, inset inputs) over a collapsible left rail. Hover or keyboard-focus
+the rail to expand it from 72 px to 240 px. All styling lives in `src/app.css`;
+there are no image assets.
+
+---
+
+## Repository layout
+
+```
+index.js              Express: static SPA + /api routes + SPA fallback
+sessions.js           cookie sessions, bearer-token compatibility
+supabaseClient.js     Supabase clients (anon + per-user)
+routes/               auth.js · profiles.js · collections.js · items.js
+src/
+  app.html            SvelteKit HTML shell
+  app.css             the Aero design system
+  lib/
+    api.js            fetch wrapper for every /api call
+    apiClient.js      CollectiumAPI + me()/logout()
+    stores.js         userProfile writable store + one-shot auth gate
+    session.js        401 handling: clear profile, go to /login?next=…
+    qr.js             qrcode wrapper + share URL builders
+    imageTools.js     canvas editors (snip / perspective / crop)
+    components/       AppShell · Logo · BinderGrid · CaseStage · ItemModal …
+  routes/             / · /login · /signup · /profile · /collection · /settings
+svelte.config.js      adapter-static, SPA fallback
+vite.config.js        dev server + /api proxy
+DESIGN.md             how the Figma wireframes and Styles.md map to the UI
+dist/                 build output (generated, git-ignored)
+```
 
 ---
 
@@ -123,26 +145,24 @@ Supabase for a session, then stores the tokens in **httpOnly cookies**:
 | `collectium_refresh` | Supabase refresh token | 30 days |
 
 - `httpOnly` — JavaScript cannot read them, so XSS cannot steal the session.
-- `SameSite=Lax` — sent on same-site requests (the dev proxy makes everything
-  same-site).
+- `SameSite=Lax` — sent on same-site requests (same origin in production, same
+  origin through the dev proxy).
 - `Secure` is off on localhost (plain http) and can be enabled in production
   with `NODE_ENV=production COOKIE_SECURE=true`.
 
-The frontend never writes tokens or profiles to `localStorage`. The only thing
-stored client-side is nothing at all: the browser holds the cookies, and the
-in-memory `userProfile` store holds the profile while a tab is open.
+The frontend never writes tokens or profiles to `localStorage`. The browser
+holds the cookies, and the in-memory `userProfile` store holds the profile while
+a tab is open.
 
 `GET /api/auth/me` returns the current profile (`{ profile }`) or
 `{ profile: null }` for a guest. `POST /api/auth/logout` revokes the session and
 clears both cookies.
 
-### Legacy compatibility
+### Non-browser API clients
 
-The old pages in `public/` authenticate with an `Authorization: Bearer <token>`
-header and keep the token in `localStorage`, exactly as before. All API routes
-accept **either** the bearer header or the cookie, so both frontends work at the
-same time. A legacy visitor who calls `/api/auth/me` with a valid bearer token is
-also given a cookie, so they can switch to the SPA without signing in again.
+Every API route also accepts `Authorization: Bearer <token>`, so scripts and
+native clients can use the API without cookies. A bearer caller who hits
+`/api/auth/me` is also given a cookie session.
 
 ---
 
@@ -150,28 +170,27 @@ also given a cookie, so they can switch to the SPA without signing in again.
 
 ### "Cannot reach the API server at http://localhost:5000"
 
-The SvelteKit app is running but the backend is not. Start terminal 1
-(`node index.js`). This message replaced the old opaque `500` error.
+You are on the Vite dev server (`:5173`) but the API is not running. Start
+`npm start` in another terminal.
 
 ### Everything returns `500` / `Request failed (500)`
 
 Almost always the same cause: **the backend is not running, or crashed at
-startup.** Check terminal 1. If it printed an env error, fix `.env`.
+startup.** Check its terminal. If it printed an env error, fix `.env`.
 
 ### `Port 5000 is already in use`
 
-Another copy of the backend is running. Either use it, or:
+Another copy of the server is running. Either use it, or:
 
 ```bash
 lsof -ti tcp:5000 | xargs kill      # macOS / Linux
 # or run this copy elsewhere:
-PORT=5001 node index.js
+PORT=5001 npm start
 ```
 
-If you change the port, start the frontend with a matching target:
+If you change the port, start the dev server with a matching target:
 
 ```bash
-cd frontend
 API_TARGET=http://localhost:5001 npm run dev
 ```
 
@@ -183,9 +202,13 @@ lsof -ti tcp:5173 | xargs kill
 
 ### Login succeeds but the next page says you are a guest
 
-The browser dropped the cookie. Make sure you open the app on
-`http://localhost:5173` (not `127.0.0.1` and not a mix of both — cookies are
-per-host), and that you have not blocked cookies for localhost.
+The browser dropped the cookie. Use one host consistently (`localhost`, not a
+mix of `localhost` and `127.0.0.1` — cookies are per-host), and make sure cookies
+are not blocked for it.
+
+### `/` answers 503 "has not been built yet"
+
+Run `npm run build`, then restart the server (or use the dev server on `:5173`).
 
 ### `Profile not found` for your own account
 
@@ -194,24 +217,21 @@ trigger; if it is missing, recreate the user or restore the row.
 
 ### The QR code points at the wrong host
 
-Share URLs are built from `location.origin`. If you open the app via
-`http://localhost:5173`, links and QR codes point there. Open via a normal
-domain in production.
+Share URLs are built from `location.origin`. Open the app on the host you want
+links to use.
 
 ---
 
 ## Production build
 
 ```bash
-cd frontend
-npm run build     # static SPA in frontend/build
-npm run preview   # serves it on :4173 with the same /api proxy
+npm run build     # static SPA in dist/
+npm start         # Express serves dist/ and the API on one origin
 ```
 
-`vite preview` is a local check only. For a real deployment, serve
-`frontend/build` and reverse-proxy `/api` to the Express server **on the same
-origin**, so the session cookies are sent. See `frontend/README.md` for the
-component/file map.
+`npm run preview` (`:4173`) is only a local check of the build. For a real
+deployment, run `npm start` behind a TLS-terminating reverse proxy and set
+`NODE_ENV=production COOKIE_SECURE=true`.
 
 ## API reference
 
@@ -235,9 +255,9 @@ component/file map.
 
 ## Scripts
 
-| Where | Command | Does |
-|---|---|---|
-| root | `node index.js` | backend on :5000 |
-| `frontend/` | `npm run dev` | SvelteKit dev server on :5173 |
-| `frontend/` | `npm run build` | static SPA into `frontend/build` |
-| `frontend/` | `npm run preview` | preview the build on :4173 |
+| Command | Does |
+|---|---|
+| `npm start` | Express on :5000, serving `dist/` + `/api` |
+| `npm run dev` | Vite dev server on :5173 with hot reload and an `/api` proxy |
+| `npm run build` | static SPA into `dist/` |
+| `npm run preview` | preview the build on :4173 |

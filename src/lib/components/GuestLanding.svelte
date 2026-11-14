@@ -1,0 +1,127 @@
+<script>
+  import { goto } from '$app/navigation';
+
+  let username = '';
+  let touched = false;
+
+  function viewProfile(event) {
+    event.preventDefault();
+    const name = username.trim().replace(/^@/, '');
+    if (!name) {
+      touched = true;
+      return;
+    }
+    goto(`/profile?u=${encodeURIComponent(name)}`);
+  }
+</script>
+
+<div class="landing aero">
+  <span class="eyebrow">Collectium</span>
+  <h1>Whose vitrine are you looking for?</h1>
+  <p class="lede">
+    Look up a collector by their handle. Binders, display cases, and every piece inside them
+    open right up — no account needed.
+  </p>
+
+  <form class="lookup" on:submit={viewProfile}>
+    <label for="lookup-user">Collector handle</label>
+    <div class="lookup-row">
+      <span class="at" aria-hidden="true">@</span>
+      <input
+        class="input"
+        id="lookup-user"
+        name="u"
+        type="text"
+        autocomplete="off"
+        spellcheck="false"
+        placeholder="cool_collector"
+        bind:value={username}
+        on:input={() => (touched = false)}
+        aria-invalid={touched && !username.trim()}
+      />
+      <button class="btn" type="submit">Open vitrine</button>
+    </div>
+    {#if touched && !username.trim()}
+      <p class="notice notice-error" role="alert">Enter a handle to continue.</p>
+    {/if}
+  </form>
+
+  <p class="switch">or <a href="/login">sign in</a> to manage your own collection.</p>
+</div>
+
+<style>
+  .landing {
+    width: 100%;
+    max-width: 470px;
+    padding: 1.75rem 1.6rem 1.5rem;
+  }
+
+  h1 {
+    margin: 0.45rem 0 0.6rem;
+    font-size: 1.55rem;
+    font-weight: 650;
+  }
+
+  .lede {
+    margin-bottom: 1.35rem;
+    color: var(--text-muted);
+    font-size: 0.88rem;
+    line-height: 1.6;
+  }
+
+  .lookup > label {
+    display: block;
+    margin-bottom: 0.4rem;
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: var(--text-soft);
+    text-shadow: var(--text-glow);
+  }
+
+  .lookup-row {
+    display: flex;
+    align-items: stretch;
+    gap: 0.45rem;
+    padding: 5px;
+    border-radius: 9px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.42), rgba(0, 0, 0, 0.16));
+    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.6), 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  .landing .input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    padding-left: 0.3rem;
+  }
+
+  .landing .input:focus {
+    box-shadow: none;
+  }
+
+  .lookup-row:focus-within {
+    border-color: rgba(0, 229, 255, 0.6);
+    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.6), 0 0 12px rgba(0, 229, 255, 0.3);
+  }
+
+  .at {
+    display: flex;
+    align-items: center;
+    padding-left: 0.7rem;
+    color: var(--text-dim);
+    font-family: var(--font-data);
+  }
+
+  .lookup .notice {
+    margin-top: 0.75rem;
+  }
+
+  .switch {
+    margin-top: 1.2rem;
+    font-size: 0.84rem;
+    color: var(--text-dim);
+  }
+</style>
