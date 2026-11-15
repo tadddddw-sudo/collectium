@@ -18,16 +18,29 @@
 begin;
 
 -- 1. Policies that mention the id columns block ALTER COLUMN TYPE, so drop
---    them. Step 3 of the order above brings them back.
-drop policy if exists "Users can update their own profile" on public.profiles;
-drop policy if exists "Collections are visible if public or owned" on public.collections;
-drop policy if exists "Users can create their own collections" on public.collections;
-drop policy if exists "Users can update their own collections" on public.collections;
-drop policy if exists "Users can delete their own collections" on public.collections;
-drop policy if exists "Items are visible with their collection" on public.collection_items;
-drop policy if exists "Users can add items to their own collections" on public.collection_items;
-drop policy if exists "Users can update their own items" on public.collection_items;
-drop policy if exists "Users can delete their own items" on public.collection_items;
+--    them. This drops EVERY policy on the three tables, including any you
+--    added yourself (e.g. "Users can manage own profile"), and prints each
+--    definition as a NOTICE (see the Results/Messages panel) before dropping it.
+--    The standard ones come back in step 3 of the order above. If you had a
+--    custom policy, rewrite it with (select public.requesting_user_id())
+--    instead of auth.uid() and create it again.
+do $$
+declare
+  pol record;
+begin
+  for pol in
+    select schemaname, tablename, policyname, cmd, roles, qual, with_check
+    from pg_policies
+    where schemaname = 'public'
+      and tablename in ('profiles', 'collections', 'collection_items')
+  loop
+    raise notice 'Dropping policy % on %.%: cmd=%, roles=%, using=%, with check=%',
+      pol.policyname, pol.schemaname, pol.tablename, pol.cmd, pol.roles,
+      pol.qual, pol.with_check;
+    execute format('drop policy %I on %I.%I', pol.policyname, pol.schemaname, pol.tablename);
+  end loop;
+end $$;
+
 -- Storage policies call auth.uid()::text, which would fail for Auth0 ids.
 drop policy if exists "Users can list their own images" on storage.objects;
 drop policy if exists "Users can upload to their own folder" on storage.objects;
