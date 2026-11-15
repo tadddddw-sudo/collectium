@@ -5,7 +5,13 @@ import { sendAuthError } from '../sessions.js';
 import { getUserFromToken } from '../authProviders.js';
 import { asyncRouter } from '../asyncRouter.js';
 import { selectProfile, isUsernameTaken, isMissingColumn } from '../profileQueries.js';
-import { USERNAME_PATTERN, UUID_PATTERN, detectImageType, pickFields } from '../validation.js';
+import {
+  USERNAME_PATTERN,
+  UUID_PATTERN,
+  detectImageType,
+  pickFields,
+  storageFolder,
+} from '../validation.js';
 import { uploadLimiter, writeLimiter } from '../rateLimits.js';
 
 const router = asyncRouter();
@@ -151,7 +157,7 @@ function imageRoute(column) {
 
     // Under <user id>/ so the existing storage policies and account deletion cover it.
     const kind = column === 'avatar_url' ? 'avatar' : 'banner';
-    const path = `${user.id}/profile/${kind}-${crypto.randomUUID()}.${type.ext}`;
+    const path = `${storageFolder(user.id)}/profile/${kind}-${crypto.randomUUID()}.${type.ext}`;
     const { error: uploadErr } = await client.storage
       .from(IMAGE_BUCKET)
       .upload(path, req.file.buffer, { contentType: type.mime, upsert: false });
@@ -170,7 +176,7 @@ function imageRoute(column) {
 
     // Best effort: drop the previous picture if it was one of ours.
     const oldPath = storagePathFromUrl(before[column]);
-    if (oldPath && oldPath.startsWith(`${user.id}/profile/`)) {
+    if (oldPath && oldPath.startsWith(`${storageFolder(user.id)}/profile/`)) {
       client.storage.from(IMAGE_BUCKET).remove([oldPath]).catch(() => {});
     }
 
@@ -195,7 +201,7 @@ function clearImageRoute(column) {
     if (error) return sendAuthError(res, error);
 
     const oldPath = storagePathFromUrl(before[column]);
-    if (oldPath && oldPath.startsWith(`${user.id}/profile/`)) {
+    if (oldPath && oldPath.startsWith(`${storageFolder(user.id)}/profile/`)) {
       client.storage.from(IMAGE_BUCKET).remove([oldPath]).catch(() => {});
     }
 

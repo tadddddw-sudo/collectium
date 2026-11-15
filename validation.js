@@ -7,6 +7,16 @@ export const USERNAME_PATTERN = /^[A-Za-z0-9_.-]{3,30}$/;
 export const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
+ * The storage folder for a user's images. Supabase Storage rejects keys that
+ * contain "|", and Auth0 ids always have one ("google-oauth2|1234"), so it
+ * becomes "_". Supabase Auth ids are UUIDs and come back unchanged.
+ * Keep in sync with public.requesting_user_folder() in supabase/schema.sql.
+ */
+export function storageFolder(userId) {
+  return String(userId).replaceAll('|', '_');
+}
+
+/**
  * Detect PNG/WebP/JPEG from a file's first bytes. Client-supplied mimetypes are
  * not trusted: files are served publicly with the Content-Type we store, so an
  * "image" that is really HTML or SVG would be a stored XSS vector.

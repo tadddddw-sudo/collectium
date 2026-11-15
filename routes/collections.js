@@ -11,6 +11,7 @@ import {
   parseJsonField,
   detectImageType,
   UUID_PATTERN,
+  storageFolder,
 } from '../validation.js';
 
 const router = asyncRouter();
@@ -186,7 +187,7 @@ router.post('/:id/items', uploadLimiter, upload.single('image'), async (req, res
   if (ownErr) return sendAuthError(res, ownErr);
   if (!owned) return res.status(404).json({ error: 'Collection not found.' });
 
-  const filePath = `${user.id}/${collectionId}/${crypto.randomUUID()}.${imageType.ext}`;
+  const filePath = `${storageFolder(user.id)}/${collectionId}/${crypto.randomUUID()}.${imageType.ext}`;
 
   const { error: uploadErr } = await userSupabase.storage
     .from('collectibles')

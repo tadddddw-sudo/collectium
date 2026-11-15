@@ -78,7 +78,7 @@ create policy "Users can upload to their own folder"
   to authenticated
   with check (
     bucket_id = 'collectibles'
-    and (storage.foldername(name))[1] = (select public.requesting_user_id())
+    and (storage.foldername(name))[1] = (select public.requesting_user_folder())
   );
 
 -- 6. Let PostgREST see the new columns straight away.

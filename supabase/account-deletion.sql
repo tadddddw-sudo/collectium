@@ -12,7 +12,7 @@ create policy "Users can delete their own collectible images"
   to authenticated
   using (
     bucket_id = 'collectibles'
-    and (storage.foldername(name))[1] = (select public.requesting_user_id())
+    and (storage.foldername(name))[1] = (select public.requesting_user_folder())
   );
 
 -- 2. Delete the caller's rows, and their Supabase auth user if they have one,

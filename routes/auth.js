@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import { supabase, createAuthClient, createIsolatedClient } from '../supabaseClient.js';
 import { asyncRouter } from '../asyncRouter.js';
 import { selectProfile, isUsernameTaken } from '../profileQueries.js';
-import { USERNAME_PATTERN } from '../validation.js';
+import { USERNAME_PATTERN, storageFolder } from '../validation.js';
 import {
   clearSessionCookies,
   setSessionCookies,
@@ -351,8 +351,8 @@ router.post('/reset-password', resetPasswordLimiter, async (req, res) => {
 const IMAGE_BUCKET = 'collectibles';
 const LIST_PAGE = 1000;
 
-/** Every object path under `<userId>/` in the image bucket (uploads live at <userId>/<collectionId>/<file>). */
-async function listUserImagePaths(client, userId) {
+/** Every object path under `<folder>/` in the image bucket (uploads live at <folder>/<collectionId>/<file>). */
+async function listUserImagePaths(client, folder) {
   const listAll = async (prefix) => {
     const entries = [];
     for (let offset = 0; ; offset += LIST_PAGE) {
@@ -366,8 +366,8 @@ async function listUserImagePaths(client, userId) {
   };
 
   const paths = [];
-  for (const entry of await listAll(userId)) {
-    const entryPath = `${userId}/${entry.name}`;
+  for (const entry of await listAll(folder)) {
+    const entryPath = `${folder}/${entry.name}`;
     if (entry.id) {
       paths.push(entryPath); // a file directly under the user folder
     } else {
@@ -422,7 +422,7 @@ router.delete('/account', sensitiveActionLimiter, async (req, res) => {
 
   // 1. Images. Storage files are not removed by deleting database rows, so remove them first.
   try {
-    const paths = await listUserImagePaths(userClient, user.id);
+    const paths = await listUserImagePaths(userClient, storageFolder(user.id));
     if (paths.length) {
       const { data: removed, error: removeError } = await userClient.storage
         .from(IMAGE_BUCKET)
