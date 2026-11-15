@@ -1,81 +1,55 @@
 <script>
   /**
-   * The isometric "C" from the Figma file, rebuilt from five rounded plastic
-   * bars. Pure CSS — no image asset, no SVG.
+   * The Collectium "C", drawn from src/lib/assets/collectium-logo.webp.
    *
-   * Coordinates are the Figma logo's own geometry, normalised to the artwork's
-   * bounding box (189 × 262 inside the 512 frame).
+   * The source file is a 1024 × 1024 canvas, but the artwork inside it sits
+   * 28 px left of the canvas centre. Instead of re-encoding the file, the mark
+   * shows a square window cut out of it, centred on the artwork's optical
+   * centre (its alpha-weighted centroid, measured at x 484, y 511). The window
+   * is 520 px wide: the artwork is 510 px tall, so that leaves 5 px of
+   * breathing room above and below.
+   *
+   * The result is a `size` × `size` square with the C optically centred in it,
+   * so parents can centre the box with ordinary flex/grid rules.
    */
+  import logoUrl from '$lib/assets/collectium-logo.webp';
+
   export let size = 44;
   export let title = 'Collectium';
+
+  const SOURCE = 1024;
+  const WINDOW = 520;
+  const CENTRE_X = 484;
+  const CENTRE_Y = 511;
+
+  const scale = `${(SOURCE / WINDOW) * 100}%`;
+  const left = `${(-(CENTRE_X - WINDOW / 2) / WINDOW) * 100}%`;
+  const top = `${(-(CENTRE_Y - WINDOW / 2) / WINDOW) * 100}%`;
 </script>
 
 <span class="mark" style={`--size: ${size}px`} role="img" aria-label={title}>
-  <span class="bar b1"></span>
-  <span class="bar b2"></span>
-  <span class="bar b3"></span>
-  <span class="bar b4"></span>
-  <span class="bar b5"></span>
+  <img
+    src={logoUrl}
+    alt=""
+    draggable="false"
+    style={`width: ${scale}; height: ${scale}; left: ${left}; top: ${top};`}
+  />
 </span>
 
 <style>
   .mark {
     position: relative;
     display: block;
-    width: calc(var(--size) * 0.733);
+    width: var(--size);
     height: var(--size);
     flex: none;
+    overflow: hidden;
   }
 
-  /* each bar is the Figma 83 × 116 block, placed by its centre */
-  .bar {
+  img {
     position: absolute;
-    width: 43.9%;
-    height: 45%;
-    border-radius: 10%;
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.45),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.3),
-      0 1px 2px rgba(0, 0, 0, 0.4);
-  }
-
-  /* top horizontal — the brightest face */
-  .b1 {
-    left: 69.3%;
-    top: 17.6%;
-    transform: translate(-50%, -50%) rotate(-90deg);
-    background: var(--brand-1);
-  }
-
-  /* upper diagonal */
-  .b2 {
-    left: 37.2%;
-    top: 27.3%;
-    transform: translate(-50%, -50%) rotate(45deg);
-    background: var(--brand-2);
-  }
-
-  /* left vertical face */
-  .b3 {
-    left: 24.1%;
-    top: 50.8%;
-    transform: translate(-50%, -50%);
-    background: var(--brand-3);
-  }
-
-  /* lower diagonal */
-  .b4 {
-    left: 37.2%;
-    top: 74.2%;
-    transform: translate(-50%, -50%) rotate(-45deg);
-    background: var(--brand-4);
-  }
-
-  /* bottom horizontal — the shaded face */
-  .b5 {
-    left: 69.3%;
-    top: 83.9%;
-    transform: translate(-50%, -50%) rotate(-90deg);
-    background: var(--brand-5);
+    max-width: none;
+    user-select: none;
+    pointer-events: none;
   }
 </style>

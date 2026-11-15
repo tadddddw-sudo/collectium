@@ -36,13 +36,6 @@
   --accent-line: rgb(var(--accent-rgb) / 0.55);
   --accent-glow: 0 0 8px rgb(var(--accent-rgb) / 0.4);
 
-  /* --- brand (the isometric C — consumed by Logo.svelte, do not change) - */
-  --brand-1: #ff9f04;
-  --brand-2: #db8802;
-  --brand-3: #b06c00;
-  --brand-4: #8c5701;
-  --brand-5: #6a4200;
-
   /* --- typography & text shadows --------------------------------------- */
   --text-main: #f8fafc;
   --text-soft: #cbd5e1;

@@ -2,7 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import { CollectiumAPI } from '$lib/apiClient.js';
   import { handleAuthFailure } from '$lib/session.js';
-  import { compressImage } from '$lib/imageTools.js';
+  import ImageCropper from './ImageCropper.svelte';
 
   /** The profile being edited (always the signed-in user's own). */
   export let profile;
@@ -20,6 +20,16 @@
   let error = '';
   let imageBusy = ''; // 'avatar' | 'banner' while uploading
   let imageError = '';
+
+  // Crop settings per picture. The banner matches the profile page's banner
+  // slab (768 × 190, about 4:1); avatars are shown as circles.
+  const CROP = {
+    avatar: { title: 'Profile picture', aspect: 1, round: true, outputWidth: 512, frameWidth: 260 },
+    banner: { title: 'Banner', aspect: 4, round: false, outputWidth: 1600, frameWidth: 460 },
+  };
+
+  /** { kind, file } while the user is choosing what part of a picture to keep. */
+  let cropping = null;
 
   // Latest copy from the server, so picture changes show up straight away.
   let current = profile;
@@ -57,7 +67,7 @@
     }
   }
 
-  async function pickImage(kind, event) {
+  function pickImage(kind, event) {
     const file = event.currentTarget.files?.[0];
     event.currentTarget.value = '';
     if (!file) return;
@@ -66,12 +76,20 @@
       imageError = 'Choose a PNG, JPEG or WebP image.';
       return;
     }
+    // Let the user choose the part to keep before anything is uploaded.
+    cropping = { kind, file };
+  }
+
+  async function uploadCrop(event) {
+    const { kind } = cropping;
+    imageError = '';
     imageBusy = kind;
     try {
-      // Avatars are shown small; banners span the column. Keeps uploads well under 5 MB.
-      const blob = await compressImage(file, kind === 'avatar' ? 512 : 1600);
-      const data = await CollectiumAPI.uploadProfileImage(kind, blob);
+      // The cropper caps the size (512 px avatars, 1600 px banners), which keeps
+      // uploads well under the 5 MB limit.
+      const data = await CollectiumAPI.uploadProfileImage(kind, event.detail.blob);
       current = data.profile;
+      cropping = null;
       dispatch('imageChanged', { profile: data.profile });
     } catch (err) {
       if (handleAuthFailure(err)) return;
@@ -97,7 +115,8 @@
   }
 
   function close() {
-    if (!saving) dispatch('close');
+    if (saving || imageBusy) return;
+    dispatch('close');
   }
 </script>
 
@@ -107,46 +126,61 @@
     <h2 class="modal-title" id="profile-edit-title">Edit profile</h2>
 
     <section class="pictures">
-      <div class="banner-preview" class:has-image={current.banner_url}>
-        {#if current.banner_url}
-          <img src={current.banner_url} alt="Current banner" />
-        {/if}
-        <div class="avatar-preview">
-          {#if current.avatar_url}
-            <img src={current.avatar_url} alt="Current profile picture" />
-          {:else}
-            <span aria-hidden="true">{(current.display_name || current.username || '?').slice(0, 1).toUpperCase()}</span>
+      {#if cropping}
+        {#key cropping.file}
+          <ImageCropper
+            file={cropping.file}
+            {...CROP[cropping.kind]}
+            busy={imageBusy === cropping.kind}
+            on:confirm={uploadCrop}
+            on:cancel={() => {
+              cropping = null;
+              imageError = '';
+            }}
+          />
+        {/key}
+      {:else}
+        <div class="banner-preview" class:has-image={current.banner_url}>
+          {#if current.banner_url}
+            <img src={current.banner_url} alt="Current banner" />
           {/if}
-        </div>
-      </div>
-
-      <div class="picture-actions">
-        <div class="picture-group">
-          <span class="field-label">Profile picture</span>
-          <div class="cluster">
-            <label class="btn btn-ghost btn-sm file-btn" class:disabled={imageBusy}>
-              {imageBusy === 'avatar' ? 'Uploading…' : 'Upload'}
-              <input type="file" accept="image/png,image/jpeg,image/webp" disabled={!!imageBusy} on:change={(e) => pickImage('avatar', e)} />
-            </label>
+          <div class="avatar-preview">
             {#if current.avatar_url}
-              <button class="btn btn-ghost btn-sm" type="button" disabled={!!imageBusy} on:click={() => removeImage('avatar')}>Remove</button>
+              <img src={current.avatar_url} alt="Current profile picture" />
+            {:else}
+              <span aria-hidden="true">{(current.display_name || current.username || '?').slice(0, 1).toUpperCase()}</span>
             {/if}
           </div>
         </div>
-        <div class="picture-group">
-          <span class="field-label">Banner</span>
-          <div class="cluster">
-            <label class="btn btn-ghost btn-sm file-btn" class:disabled={imageBusy}>
-              {imageBusy === 'banner' ? 'Uploading…' : 'Upload'}
-              <input type="file" accept="image/png,image/jpeg,image/webp" disabled={!!imageBusy} on:change={(e) => pickImage('banner', e)} />
-            </label>
-            {#if current.banner_url}
-              <button class="btn btn-ghost btn-sm" type="button" disabled={!!imageBusy} on:click={() => removeImage('banner')}>Remove</button>
-            {/if}
+
+        <div class="picture-actions">
+          <div class="picture-group">
+            <span class="field-label">Profile picture</span>
+            <div class="cluster">
+              <label class="btn btn-ghost btn-sm file-btn" class:disabled={imageBusy}>
+                {imageBusy === 'avatar' ? 'Uploading…' : 'Upload'}
+                <input type="file" accept="image/png,image/jpeg,image/webp" disabled={!!imageBusy} on:change={(e) => pickImage('avatar', e)} />
+              </label>
+              {#if current.avatar_url}
+                <button class="btn btn-ghost btn-sm" type="button" disabled={!!imageBusy} on:click={() => removeImage('avatar')}>Remove</button>
+              {/if}
+            </div>
+          </div>
+          <div class="picture-group">
+            <span class="field-label">Banner</span>
+            <div class="cluster">
+              <label class="btn btn-ghost btn-sm file-btn" class:disabled={imageBusy}>
+                {imageBusy === 'banner' ? 'Uploading…' : 'Upload'}
+                <input type="file" accept="image/png,image/jpeg,image/webp" disabled={!!imageBusy} on:change={(e) => pickImage('banner', e)} />
+              </label>
+              {#if current.banner_url}
+                <button class="btn btn-ghost btn-sm" type="button" disabled={!!imageBusy} on:click={() => removeImage('banner')}>Remove</button>
+              {/if}
+            </div>
           </div>
         </div>
-      </div>
-      <p class="hint dim">Pictures are public and save as soon as you pick them. A wide image (about 3:1) works best for the banner.</p>
+        <p class="hint dim">Pictures are public. After you pick one you can choose which part to show; it saves when you press “Use this crop”.</p>
+      {/if}
       {#if imageError}
         <p class="notice notice-error" role="alert">{imageError}</p>
       {/if}

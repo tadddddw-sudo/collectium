@@ -226,11 +226,12 @@
     width: 68px;
     height: 68px;
     border-radius: 50%;
-    /* a recessed cup the logo sits in, lit from directly above */
+    /* a recessed cup the logo sits in; the themed well tokens keep the
+       shading soft in light mode instead of a hard-coded black vignette */
     border: 1px solid var(--well-border);
-    background: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.12), rgba(0, 0, 0, 0.35) 70%);
+    background: var(--well-bg);
     box-shadow:
-      inset 0px 3px 6px rgba(0, 0, 0, 0.55),
+      var(--shadow-carve),
       var(--edge-lip);
     grid-row: span 2;
   }

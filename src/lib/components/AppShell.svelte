@@ -254,7 +254,9 @@
     align-items: center;
     gap: 0.7rem;
     height: 48px;
-    padding: 0 7px;
+    /* 9px = nav-item padding (8) + border (1), so the 30px logo shares a
+       centre line with the 30px nav glyphs below it */
+    padding: 0 9px;
     border-radius: var(--r-md);
     color: var(--text-main);
     flex: none;
@@ -480,7 +482,7 @@
 
     .brand {
       height: 44px;
-      padding: 0 5px;
+      padding: 0 7px;
     }
 
     .brand-text,
