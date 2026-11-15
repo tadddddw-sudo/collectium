@@ -46,8 +46,9 @@ gutter**, **~8–14 px radii**, **56 px compact rows**, **240 px feature slabs**
 - **Binder pockets**: inset dark wells with a lip of light, matching the "carved
   plastic" direction; art gets a deep cast shadow so pieces read as objects.
 - **Case stage**: a dark reflective shelf with a specular band at 50 % height.
-- **Logo** (`lib/components/Logo.svelte`): the five bars recreated in CSS at the
-  Figma angles and colours; no SVG, no image.
+- **Logo** (`lib/components/Logo.svelte`): renders
+  `lib/assets/collectium-logo.webp` in a square box, cropped so the C's
+  optical centre (its alpha-weighted centroid) sits at the centre of the box.
 
 ## Deliberate deviations
 

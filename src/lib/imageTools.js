@@ -506,6 +506,285 @@ export class InteractiveOutlineEditor {
   }
 }
 
+/* ------------------------------- frame cropper ------------------------------ */
+
+/**
+ * Pan-and-zoom cropper for a fixed-aspect frame (profile picture, banner).
+ *
+ * The canvas shows the frame with a dimmed margin around it, so the user can
+ * see what falls outside the crop. Drag (or arrow keys) to move the picture,
+ * scroll / pinch / slider (or +/-) to zoom. The image always covers the frame.
+ *
+ * State is kept in source-image pixels (`cx`, `cy` = the source point under the
+ * frame centre), so export crops straight from the full-resolution original.
+ */
+export class FrameCropEditor {
+  constructor(canvas, { aspect = 1, frameWidth = 280, padding = 22, round = false, onChange = () => {} } = {}) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.aspect = aspect;
+    this.round = round;
+    this.onChange = onChange;
+
+    this.fw = frameWidth;
+    this.fh = frameWidth / aspect;
+    this.pad = padding;
+    this.W = this.fw + padding * 2;
+    this.H = this.fh + padding * 2;
+    this.ratio = Math.min(2, Math.max(1, (typeof window !== 'undefined' && window.devicePixelRatio) || 1));
+    canvas.width = Math.round(this.W * this.ratio);
+    canvas.height = Math.round(this.H * this.ratio);
+
+    this.img = null;
+    this.baseScale = 1;
+    this.zoom = 1;
+    this.minZoom = 1;
+    this.maxZoom = 5;
+    this.cx = 0;
+    this.cy = 0;
+
+    this._pointers = new Map();
+    this._gesture = null;
+    this._abort = new AbortController();
+    this._bindEvents();
+  }
+
+  destroy() {
+    this._abort.abort();
+    this.img = null;
+  }
+
+  /** Load a File/Blob. Rejects if the browser cannot decode it. */
+  loadBlob(blob) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(blob);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        this.img = img;
+        this.baseScale = Math.max(this.fw / img.naturalWidth, this.fh / img.naturalHeight);
+        this.reset();
+        resolve();
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error('That image could not be opened.'));
+      };
+      img.src = url;
+    });
+  }
+
+  reset() {
+    if (!this.img) return;
+    this.zoom = 1;
+    this.cx = this.img.naturalWidth / 2;
+    this.cy = this.img.naturalHeight / 2;
+    this._update();
+  }
+
+  /** Zoom to `z`, keeping the image point under logical canvas point (px, py) fixed. */
+  setZoom(z, px = this.pad + this.fw / 2, py = this.pad + this.fh / 2) {
+    if (!this.img) return;
+    const next = Math.max(this.minZoom, Math.min(this.maxZoom, Number(z) || 1));
+    const s0 = this._scale();
+    const ix = this.cx + (px - this.pad - this.fw / 2) / s0;
+    const iy = this.cy + (py - this.pad - this.fh / 2) / s0;
+    this.zoom = next;
+    const s1 = this._scale();
+    this.cx = ix - (px - this.pad - this.fw / 2) / s1;
+    this.cy = iy - (py - this.pad - this.fh / 2) / s1;
+    this._update();
+  }
+
+  /** Move the picture by (dx, dy) logical canvas pixels. */
+  pan(dx, dy) {
+    if (!this.img) return;
+    const s = this._scale();
+    this.cx -= dx / s;
+    this.cy -= dy / s;
+    this._update();
+  }
+
+  /**
+   * Crop the frame out of the original image. Never upscales: a small crop of a
+   * small picture exports at its real resolution.
+   */
+  exportBlob(maxWidth, type = 'image/jpeg', quality = 0.9) {
+    if (!this.img) return Promise.resolve(null);
+    const s = this._scale();
+    const sw = this.fw / s;
+    const sh = this.fh / s;
+    const sx = this.cx - sw / 2;
+    const sy = this.cy - sh / 2;
+    const outW = Math.max(1, Math.round(Math.min(maxWidth, sw)));
+    const outH = Math.max(1, Math.round(outW / this.aspect));
+
+    const out = document.createElement('canvas');
+    out.width = outW;
+    out.height = outH;
+    const octx = out.getContext('2d');
+    octx.imageSmoothingQuality = 'high';
+    octx.drawImage(this.img, sx, sy, sw, sh, 0, 0, outW, outH);
+    return new Promise((resolve) => out.toBlob((b) => resolve(b), type, quality));
+  }
+
+  _scale() {
+    return this.baseScale * this.zoom;
+  }
+
+  _clamp() {
+    const s = this._scale();
+    const hw = this.fw / (2 * s);
+    const hh = this.fh / (2 * s);
+    const iw = this.img.naturalWidth;
+    const ih = this.img.naturalHeight;
+    this.cx = Math.max(hw, Math.min(iw - hw, this.cx));
+    this.cy = Math.max(hh, Math.min(ih - hh, this.cy));
+  }
+
+  _update() {
+    this._clamp();
+    this._render();
+    this.onChange({ zoom: this.zoom, minZoom: this.minZoom, maxZoom: this.maxZoom });
+  }
+
+  _point(e) {
+    const rect = this.canvas.getBoundingClientRect();
+    return {
+      x: ((e.clientX - rect.left) / rect.width) * this.W,
+      y: ((e.clientY - rect.top) / rect.height) * this.H,
+    };
+  }
+
+  _bindEvents() {
+    const c = this.canvas;
+    const opts = { signal: this._abort.signal };
+
+    c.addEventListener('pointerdown', (e) => {
+      if (!this.img) return;
+      e.preventDefault();
+      c.focus({ preventScroll: true });
+      c.setPointerCapture(e.pointerId);
+      this._pointers.set(e.pointerId, this._point(e));
+      this._gesture = null;
+    }, opts);
+
+    c.addEventListener('pointermove', (e) => {
+      if (!this.img || !this._pointers.has(e.pointerId)) return;
+      const prev = this._pointers.get(e.pointerId);
+      const next = this._point(e);
+      this._pointers.set(e.pointerId, next);
+
+      if (this._pointers.size === 1) {
+        this.pan(next.x - prev.x, next.y - prev.y);
+        return;
+      }
+
+      // Two fingers: pinch to zoom around their midpoint, and pan with it.
+      const [a, b] = [...this._pointers.values()];
+      const dist = Math.hypot(a.x - b.x, a.y - b.y);
+      const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+      if (this._gesture && this._gesture.dist > 0) {
+        this.pan(mid.x - this._gesture.mid.x, mid.y - this._gesture.mid.y);
+        this.setZoom(this.zoom * (dist / this._gesture.dist), mid.x, mid.y);
+      }
+      this._gesture = { dist, mid };
+    }, opts);
+
+    const release = (e) => {
+      this._pointers.delete(e.pointerId);
+      this._gesture = null;
+    };
+    c.addEventListener('pointerup', release, opts);
+    c.addEventListener('pointercancel', release, opts);
+
+    c.addEventListener('wheel', (e) => {
+      if (!this.img) return;
+      e.preventDefault();
+      const p = this._point(e);
+      this.setZoom(this.zoom * Math.exp(-e.deltaY * 0.0015), p.x, p.y);
+    }, { passive: false, signal: this._abort.signal });
+
+    c.addEventListener('keydown', (e) => {
+      if (!this.img) return;
+      const step = e.shiftKey ? 40 : 10;
+      const moves = { ArrowLeft: [step, 0], ArrowRight: [-step, 0], ArrowUp: [0, step], ArrowDown: [0, -step] };
+      if (moves[e.key]) {
+        e.preventDefault();
+        this.pan(...moves[e.key]);
+      } else if (e.key === '+' || e.key === '=') {
+        e.preventDefault();
+        this.setZoom(this.zoom * 1.1);
+      } else if (e.key === '-' || e.key === '_') {
+        e.preventDefault();
+        this.setZoom(this.zoom / 1.1);
+      }
+    }, opts);
+  }
+
+  _framePath(ctx) {
+    const { pad, fw, fh } = this;
+    if (this.round) {
+      ctx.moveTo(pad + fw, pad + fh / 2);
+      ctx.arc(pad + fw / 2, pad + fh / 2, Math.min(fw, fh) / 2, 0, Math.PI * 2);
+    } else {
+      ctx.rect(pad, pad, fw, fh);
+    }
+  }
+
+  _render() {
+    if (!this.img) return;
+    const { ctx, pad, fw, fh, W, H } = this;
+    const s = this._scale();
+
+    ctx.setTransform(this.ratio, 0, 0, this.ratio, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(
+      this.img,
+      pad + fw / 2 - this.cx * s,
+      pad + fh / 2 - this.cy * s,
+      this.img.naturalWidth * s,
+      this.img.naturalHeight * s,
+    );
+
+    // Dim everything outside the frame.
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, W, H);
+    this._framePath(ctx);
+    ctx.fillStyle = 'rgba(8, 6, 4, 0.62)';
+    ctx.fill('evenodd');
+    ctx.restore();
+
+    // Rule-of-thirds guides inside the frame.
+    ctx.save();
+    ctx.beginPath();
+    this._framePath(ctx);
+    ctx.clip();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let i = 1; i < 3; i++) {
+      ctx.moveTo(pad + (fw * i) / 3, pad);
+      ctx.lineTo(pad + (fw * i) / 3, pad + fh);
+      ctx.moveTo(pad, pad + (fh * i) / 3);
+      ctx.lineTo(pad + fw, pad + (fh * i) / 3);
+    }
+    ctx.stroke();
+    ctx.restore();
+
+    // Frame outline.
+    ctx.save();
+    ctx.beginPath();
+    this._framePath(ctx);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
 /* ------------------------------ square editor ------------------------------ */
 
 export class SquareCropEditor {
