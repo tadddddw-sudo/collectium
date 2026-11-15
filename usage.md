@@ -51,6 +51,8 @@ Optional settings:
 | `TRUST_PROXY` | unset | Number of reverse-proxy hops in front of Node (usually `1`). Required behind a proxy, or every visitor shares one rate-limit bucket. Leave unset if Node is exposed directly. |
 | `CORS_ORIGINS` | unset | Comma-separated origins allowed to make credentialed cross-origin API calls. The SPA is same-origin and needs none. |
 | `COOKIE_SECURE` | on in production | Set `false` only for a production deployment served over plain http. |
+| `AUTH0_DOMAIN`, `AUTH0_CLIENT_ID`, `AUTH0_CLIENT_SECRET`, `AUTH0_AUDIENCE` | unset | Turn on "Continue with Google" (through Auth0) next to email sign-in. All four plus `APP_URL` are needed. See [Google sign-in](#google-sign-in-optional). |
+| `AUTH0_MGMT_CLIENT_ID`, `AUTH0_MGMT_CLIENT_SECRET` | unset | Lets account deletion also remove the user from Auth0. Without them the Auth0 user is left behind. |
 
 ## 3. Install dependencies (once)
 
@@ -417,6 +419,51 @@ inbox, and the login page offers to resend the email.
 cannot do by itself: a storage policy that lets users delete their own images,
 and the `delete_my_account()` SQL function that removes their rows and auth
 user. Run `supabase/account-deletion.sql` once in the Supabase SQL Editor.
+
+## Google sign-in (optional)
+
+Email and password sign-in (Supabase Auth) always works. "Continue with
+Google" is an extra way in: it runs through Auth0's Google connection, and the
+app never shows Auth0's own login page or any other Auth0 method. Both kinds of
+user share the same tables: user ids are the token's `sub` stored as text
+(a UUID for email users, `google-oauth2|...` for Google users).
+
+1. **Database.** New project: run `schema.sql`, `profile-editing.sql`,
+   `account-deletion.sql`. Existing project: back up, run
+   `supabase/auth0-migration.sql`, then re-run those three files in that order.
+2. **Auth0 API.** Applications → APIs → Create API. Identifier (audience), e.g.
+   `https://collectium-api`, signing algorithm **RS256**. Put it in
+   `AUTH0_AUDIENCE`. Under its Settings, turn on **Allow Offline Access** so
+   sign-ins get a refresh token.
+3. **Auth0 application.** Create a **Regular Web Application**. Allowed
+   Callback URLs: `<APP_URL>/api/auth/auth0/callback`. Allowed Logout URLs:
+   `<APP_URL>/login`. Under Advanced → Grant Types enable **Authorization Code**
+   and **Refresh Token**. Copy the domain, client id and secret into `.env`.
+   In development `APP_URL` is `http://localhost:5173` (the Vite proxy).
+4. **Google only.** Authentication → Social → Google → enable it for this
+   application. On the application's **Connections** tab, turn off every other
+   connection (notably `Username-Password-Authentication`), so Auth0 cannot be
+   used to create password accounts. The default dev keys work for testing; use
+   your own Google OAuth client before launch (dev keys show a warning and are
+   rate limited).
+5. **Role claim.** Supabase only treats a token as signed in when it has
+   `role: "authenticated"`. Actions → Library → Build Custom → trigger
+   **Login / Post Login**:
+   ```js
+   exports.onExecutePostLogin = async (event, api) => {
+     api.accessToken.setCustomClaim('role', 'authenticated');
+   };
+   ```
+   Deploy it, then add it to Actions → Triggers → post-login.
+6. **Supabase.** Authentication → Sign In / Providers → Third-Party Auth → add
+   Auth0 with your tenant id and region.
+7. **Optional, account deletion.** Create a Machine to Machine application
+   authorized for the Auth0 Management API with `delete:users`; put its
+   credentials in `AUTH0_MGMT_CLIENT_ID` / `AUTH0_MGMT_CLIENT_SECRET`.
+8. `npm install` (adds `jose`), restart the server.
+
+Accounts are never merged: the same address through Google and through email
+sign-up gives two separate Collectium accounts.
 
 ## Scripts
 

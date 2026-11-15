@@ -6,11 +6,14 @@
  * in localStorage.
  */
 import { createIsolatedClient, isAuthError } from './supabaseClient.js';
+import { refreshAuth0Session } from './authProviders.js';
 
 export const ACCESS_COOKIE = 'collectium_access';
 export const REFRESH_COOKIE = 'collectium_refresh';
 /** "1" when the user ticked "Keep me signed in"; refreshes keep the same cookie lifetime. */
 export const REMEMBER_COOKIE = 'collectium_remember';
+/** "auth0" for sessions that came from Auth0; absent for Supabase Auth sessions. */
+export const PROVIDER_COOKIE = 'collectium_provider';
 
 const REMEMBER_SECONDS = 60 * 60 * 24 * 30;
 
@@ -53,9 +56,10 @@ export function parseCookies(header = '') {
 
 /**
  * Store the session in cookies. With `remember` the refresh cookie lasts 30
- * days; without it every cookie ends when the browser closes.
+ * days; without it every cookie ends when the browser closes. `provider` is
+ * 'auth0' or 'supabase' and decides how the session is refreshed later.
  */
-export function setSessionCookies(res, session, { remember = false } = {}) {
+export function setSessionCookies(res, session, { remember = false, provider = 'supabase' } = {}) {
   if (!session?.access_token) return;
   res.cookie(
     ACCESS_COOKIE,
@@ -67,12 +71,18 @@ export function setSessionCookies(res, session, { remember = false } = {}) {
   }
   if (remember) res.cookie(REMEMBER_COOKIE, '1', cookieOptions(REMEMBER_SECONDS));
   else res.clearCookie(REMEMBER_COOKIE, { path: '/' });
+  if (provider === 'auth0') {
+    res.cookie(PROVIDER_COOKIE, 'auth0', cookieOptions(remember ? REMEMBER_SECONDS : null));
+  } else {
+    res.clearCookie(PROVIDER_COOKIE, { path: '/' });
+  }
 }
 
 export function clearSessionCookies(res) {
   res.clearCookie(ACCESS_COOKIE, { path: '/' });
   res.clearCookie(REFRESH_COOKIE, { path: '/' });
   res.clearCookie(REMEMBER_COOKIE, { path: '/' });
+  res.clearCookie(PROVIDER_COOKIE, { path: '/' });
 }
 
 /** 401 + AUTH_REQUIRED for a dead session, 400 for anything else. */
@@ -119,13 +129,25 @@ export async function attachSession(req, res, next) {
     let token = headerToken || cookies[ACCESS_COOKIE] || null;
 
     if (!headerToken && cookies[REFRESH_COOKIE] && (!token || isExpired(token))) {
-      // Isolated client: refreshing on the shared client would make it act as this user.
-      const { data, error } = await createIsolatedClient().auth.refreshSession({
-        refresh_token: cookies[REFRESH_COOKIE],
-      });
-      if (!error && data?.session) {
-        token = data.session.access_token;
-        setSessionCookies(res, data.session, { remember: cookies[REMEMBER_COOKIE] === '1' });
+      const provider = cookies[PROVIDER_COOKIE] === 'auth0' ? 'auth0' : 'supabase';
+      const remember = cookies[REMEMBER_COOKIE] === '1';
+      let session = null;
+
+      if (provider === 'auth0') {
+        session = await refreshAuth0Session(cookies[REFRESH_COOKIE]);
+        // With refresh-token rotation off, Auth0 sends no new refresh token: keep ours.
+        if (session && !session.refresh_token) session.refresh_token = cookies[REFRESH_COOKIE];
+      } else {
+        // Isolated client: refreshing on the shared client would make it act as this user.
+        const { data, error } = await createIsolatedClient().auth.refreshSession({
+          refresh_token: cookies[REFRESH_COOKIE],
+        });
+        if (!error && data?.session) session = data.session;
+      }
+
+      if (session?.access_token) {
+        token = session.access_token;
+        setSessionCookies(res, session, { remember, provider });
       } else {
         token = null;
         clearSessionCookies(res);

@@ -12,12 +12,14 @@ create policy "Users can delete their own collectible images"
   to authenticated
   using (
     bucket_id = 'collectibles'
-    and (storage.foldername(name))[1] = (select auth.uid())::text
+    and (storage.foldername(name))[1] = (select public.requesting_user_id())
   );
 
--- 2. Delete the caller's rows and their auth user in one transaction.
---    SECURITY DEFINER is needed because the anon key cannot delete from auth.users.
---    The function only ever acts on auth.uid(), so a user can only delete themselves.
+-- 2. Delete the caller's rows, and their Supabase auth user if they have one,
+--    in one transaction. SECURITY DEFINER is needed because the anon key cannot
+--    delete from auth.users. The function only ever acts on the caller's own
+--    id, so a user can only delete themselves. Auth0 users are not in
+--    auth.users; the server removes them from Auth0 itself.
 create or replace function public.delete_my_account()
 returns void
 language plpgsql
@@ -25,7 +27,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  uid uuid := auth.uid();
+  uid text := public.requesting_user_id();
 begin
   if uid is null then
     raise exception 'Not authenticated' using errcode = '28000';
@@ -34,7 +36,10 @@ begin
   delete from public.collection_items where user_id = uid;
   delete from public.collections where user_id = uid;
   delete from public.profiles where id = uid;
-  delete from auth.users where id = uid;
+  -- Only Supabase Auth ids are UUIDs; skip the cast for Auth0 ids.
+  if uid ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then
+    delete from auth.users where id = uid::uuid;
+  end if;
 end;
 $$;
 

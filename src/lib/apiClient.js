@@ -60,15 +60,21 @@ export async function me() {
   }
 }
 
-/** End the session and clear the cookies. */
+/**
+ * End the session and clear the cookies. Resolves to a URL when the browser
+ * should also visit Auth0 to end its single sign-on session, otherwise null.
+ */
 export async function logout() {
   try {
-    await fetch(`${API_ROOT}/auth/logout`, {
+    const res = await fetch(`${API_ROOT}/auth/logout`, {
       method: 'POST',
       credentials: 'include',
     });
+    const data = await parseBody(res);
+    return typeof data.redirect === 'string' ? data.redirect : null;
   } catch {
     /* offline is fine: the server cookie is the only copy of the session */
+    return null;
   }
 }
 

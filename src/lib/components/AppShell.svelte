@@ -46,8 +46,13 @@
           : '';
 
   async function signOut() {
-    await CollectiumAPI.logout();
+    const redirect = await CollectiumAPI.logout();
     userProfile.set(null);
+    // Auth0 sessions also need a visit to Auth0 to end its single sign-on session.
+    if (redirect) {
+      location.href = redirect;
+      return;
+    }
     goto('/login');
   }
 </script>

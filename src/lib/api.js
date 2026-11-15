@@ -55,8 +55,15 @@ export const CollectiumAPI = {
       body: JSON.stringify({ ...link, password }),
     }),
 
-  deleteAccount: (password) =>
-    request('/auth/account', { method: 'DELETE', body: JSON.stringify({ password }) }),
+  /** Whether "Continue with Google" is set up: `{ google }`. */
+  getAuthProviders: () => request('/auth/providers'),
+
+  /** A password (Supabase accounts) or `{ confirm_username }` (Auth0 accounts). */
+  deleteAccount: (confirmation) =>
+    request('/auth/account', {
+      method: 'DELETE',
+      body: JSON.stringify(typeof confirmation === 'string' ? { password: confirmation } : confirmation),
+    }),
 
   resendConfirmation: (email) =>
     request('/auth/resend-confirmation', { method: 'POST', body: JSON.stringify({ email }) }),

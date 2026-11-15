@@ -3,6 +3,7 @@
   import { goto } from '$app/navigation';
   import { CollectiumAPI } from '$lib/apiClient.js';
   import { PASSWORD_RULES, isPasswordValid } from '$lib/password.js';
+  import GoogleSignIn from '$lib/components/GoogleSignIn.svelte';
 
   let username = '';
   let email = '';
@@ -62,6 +63,8 @@
   {:else if success}
     <p class="notice notice-success" role="status">Account created! Redirecting to log in…</p>
   {:else}
+    <GoogleSignIn mode="signup" />
+
     <form on:submit={submit}>
       {#if error}
         <p class="notice notice-error" role="alert">{error}</p>
