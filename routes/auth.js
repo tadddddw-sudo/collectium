@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { supabase, createAuthClient, createIsolatedClient } from '../supabaseClient.js';
 import { asyncRouter } from '../asyncRouter.js';
 import { selectProfile, isUsernameTaken } from '../profileQueries.js';
@@ -8,7 +9,21 @@ import {
   decodeJwtPayload,
   ACCESS_COOKIE,
   REFRESH_COOKIE,
+  PROVIDER_COOKIE,
 } from '../sessions.js';
+import {
+  auth0Enabled,
+  authorizeUrl,
+  canDeleteAuth0Users,
+  deleteAuth0User,
+  exchangeCode,
+  fetchUserInfo,
+  getUserFromToken,
+  logoutUrl,
+  newPkce,
+  revokeAuth0RefreshToken,
+  verifyAuth0Token,
+} from '../authProviders.js';
 import {
   loginIpLimiter,
   loginAccountLimiter,
@@ -177,7 +192,7 @@ router.post('/login', loginIpLimiter, loginAccountLimiter, async (req, res) => {
   res.json({
     user: authData.user,
     session: authData.session,
-    profile,
+    profile: { ...profile, auth_provider: 'supabase' },
   });
 });
 
@@ -186,9 +201,8 @@ router.get('/me', async (req, res) => {
   const token = req.accessToken || req.cookies?.[ACCESS_COOKIE];
   if (!token) return res.json({ profile: null });
 
-  const { data: userData, error: userError } = await supabase.auth.getUser(token);
-  const user = userData?.user;
-  if (userError || !user) {
+  const user = await getUserFromToken(token);
+  if (!user) {
     clearSessionCookies(res);
     return res.json({ profile: null });
   }
@@ -201,16 +215,26 @@ router.get('/me', async (req, res) => {
   // Bearer clients (scripts, native apps) get a cookie session too, so they can
   // switch to the browser without signing in again.
   if (!req.cookies?.[ACCESS_COOKIE]) {
-    setSessionCookies(res, { access_token: token, expires_in: 3600 });
+    setSessionCookies(res, { access_token: token, expires_in: 3600 }, { provider: user.provider });
   }
 
-  res.json({ profile });
+  res.json({ profile: { ...profile, auth_provider: user.provider } });
 });
 
-// POST /api/auth/logout -> revoke the session and drop the cookies
+// POST /api/auth/logout -> revoke the session and drop the cookies.
+// Auth0 sessions also answer with `redirect`: the browser should visit it to end
+// the Auth0 single sign-on session, or "Continue with Google" would sign
+// straight back in.
 router.post('/logout', async (req, res) => {
   const token = req.accessToken || req.cookies?.[ACCESS_COOKIE];
   const refreshToken = req.cookies?.[REFRESH_COOKIE];
+
+  if (req.cookies?.[PROVIDER_COOKIE] === 'auth0') {
+    await revokeAuth0RefreshToken(refreshToken);
+    clearSessionCookies(res);
+    const redirect = auth0Enabled() ? logoutUrl(new URL('/login', process.env.APP_URL).toString()) : undefined;
+    return res.json({ success: true, redirect });
+  }
 
   if (token && refreshToken) {
     // Best effort: revoke the refresh token server-side. Clearing the cookies
@@ -362,29 +386,37 @@ router.delete('/account', sensitiveActionLimiter, async (req, res) => {
     return res.status(401).json({ error: 'Please sign in again.', code: 'AUTH_REQUIRED' });
   }
 
-  const { password } = req.body || {};
-  if (typeof password !== 'string' || !password) {
-    return res.status(400).json({ error: 'Enter your password to confirm.' });
-  }
-
-  const { data: userData, error: userError } = await supabase.auth.getUser(token);
-  const user = userData?.user;
-  if (userError || !user) {
+  const user = await getUserFromToken(token);
+  if (!user) {
     clearSessionCookies(res);
     return res.status(401).json({ error: 'Session expired. Please sign in again.', code: 'AUTH_REQUIRED' });
   }
 
-  // Re-check the password so a stolen or forgotten-open session can't delete the account.
-  // A separate client keeps the shared anon client's session state untouched.
-  const verifyClient = createIsolatedClient();
-  const { error: verifyError } = await verifyClient.auth.signInWithPassword({
-    email: user.email,
-    password,
-  });
-  if (verifyError) return res.status(403).json({ error: 'Password is incorrect.' });
-  // That check created a session of its own; don't leave it lying around.
-  // scope 'local' revokes only that session, not the user's other devices.
-  verifyClient.auth.signOut({ scope: 'local' }).catch(() => {});
+  if (user.provider === 'auth0') {
+    // No password to check. Typing the handle guards against a stray click.
+    const { data: own } = await loadProfile(token, user.id);
+    const typed = req.body?.confirm_username;
+    if (!own || typeof typed !== 'string' || typed.trim().toLowerCase() !== own.username.toLowerCase()) {
+      return res.status(400).json({ error: 'Type your username to confirm.' });
+    }
+  } else {
+    const { password } = req.body || {};
+    if (typeof password !== 'string' || !password) {
+      return res.status(400).json({ error: 'Enter your password to confirm.' });
+    }
+
+    // Re-check the password so a stolen or forgotten-open session can't delete the account.
+    // A separate client keeps the shared anon client's session state untouched.
+    const verifyClient = createIsolatedClient();
+    const { error: verifyError } = await verifyClient.auth.signInWithPassword({
+      email: user.email,
+      password,
+    });
+    if (verifyError) return res.status(403).json({ error: 'Password is incorrect.' });
+    // That check created a session of its own; don't leave it lying around.
+    // scope 'local' revokes only that session, not the user's other devices.
+    verifyClient.auth.signOut({ scope: 'local' }).catch(() => {});
+  }
 
   const userClient = createAuthClient(token);
 
@@ -422,8 +454,141 @@ router.delete('/account', sensitiveActionLimiter, async (req, res) => {
     });
   }
 
+  // 3. The Auth0 account itself. The data is already gone, so a failure here is
+  //    logged, not shown: the person can no longer reach anything of theirs.
+  if (user.provider === 'auth0') {
+    if (canDeleteAuth0Users()) {
+      try {
+        await deleteAuth0User(user.id);
+      } catch (err) {
+        console.error('[DELETE /auth/account] Auth0 user delete failed:', err.message);
+      }
+    } else {
+      console.warn(
+        '[DELETE /auth/account] AUTH0_MGMT_CLIENT_ID/SECRET not set: the Auth0 user was left in place.'
+      );
+    }
+  }
+
   clearSessionCookies(res);
   res.json({ success: true });
+});
+
+// ---- "Continue with Google" (through Auth0) -------------------------------------------
+
+const OAUTH_COOKIE = 'collectium_oauth';
+const OAUTH_COOKIE_PATH = '/api/auth/auth0';
+
+const oauthCookieOptions = () => ({
+  httpOnly: true,
+  sameSite: 'lax', // the return from Auth0 is a top-level GET, which lax allows
+  path: OAUTH_COOKIE_PATH,
+  secure: process.env.NODE_ENV === 'production' && process.env.COOKIE_SECURE !== 'false',
+  maxAge: 10 * 60 * 1000,
+});
+
+/** Same-site paths only ("/x"), never "//host" or "https://host". */
+function safeNextPath(next) {
+  return typeof next === 'string' && /^\/(?![/\\])/.test(next) && next.length <= 500 ? next : null;
+}
+
+// GET /api/auth/providers -> whether the login page should show "Continue with Google"
+router.get('/providers', (req, res) => {
+  res.json({ google: auth0Enabled() });
+});
+
+// GET /api/auth/auth0/login?remember=1&next=/x -> off to Google (through Auth0)
+router.get('/auth0/login', loginIpLimiter, (req, res) => {
+  if (!auth0Enabled()) return res.redirect('/login?error=auth0_unavailable');
+
+  const { verifier, challenge } = newPkce();
+  const state = crypto.randomBytes(24).toString('base64url');
+  const flow = {
+    state,
+    verifier,
+    next: safeNextPath(req.query.next),
+    remember: req.query.remember === '1',
+  };
+
+  res.cookie(OAUTH_COOKIE, Buffer.from(JSON.stringify(flow)).toString('base64url'), oauthCookieOptions());
+  res.redirect(authorizeUrl({ state, challenge }));
+});
+
+function readOauthCookie(req) {
+  try {
+    return JSON.parse(Buffer.from(req.cookies?.[OAUTH_COOKIE] || '', 'base64url').toString('utf8'));
+  } catch {
+    return null;
+  }
+}
+
+function sameString(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const x = Buffer.from(a);
+  const y = Buffer.from(b);
+  return x.length === y.length && crypto.timingSafeEqual(x, y);
+}
+
+/** A handle for a new Auth0 user: from their nickname or email, made unique. */
+async function pickUsername(info) {
+  const raw = String(info.nickname || info.email?.split('@')[0] || '');
+  let base = raw.replace(/[^A-Za-z0-9_.-]/g, '').slice(0, 22);
+  if (base.length < 3) base = 'user';
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const candidate = attempt === 0 ? base : `${base}_${crypto.randomBytes(3).toString('hex')}`;
+    if (!(await isUsernameTaken(supabase, candidate))) return candidate;
+  }
+  return `user_${crypto.randomBytes(6).toString('hex')}`;
+}
+
+/** The signed-in Auth0 user's profile, created on first sign-in. */
+async function ensureAuth0Profile(accessToken, userId, info) {
+  const first = await loadProfile(accessToken, userId);
+  if (first.data) return first.data;
+
+  const client = createAuthClient(accessToken);
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { error } = await client.from('profiles').insert({
+      id: userId,
+      username: await pickUsername(info),
+      display_name: typeof info.name === 'string' && info.name.trim() ? info.name.trim().slice(0, 50) : null,
+    });
+    if (!error) break;
+    if (error.code !== '23505') throw error; // unique violation: handle or id taken, try again
+  }
+
+  const { data, error } = await loadProfile(accessToken, userId);
+  if (error || !data) throw error || new Error('profile was not created');
+  return data;
+}
+
+// GET /api/auth/auth0/callback -> Auth0 sends the browser back here with ?code=&state=
+router.get('/auth0/callback', loginIpLimiter, async (req, res) => {
+  const flow = readOauthCookie(req);
+  res.clearCookie(OAUTH_COOKIE, { path: OAUTH_COOKIE_PATH });
+  const fail = (code) => res.redirect(`/login?error=${code}`);
+
+  if (!auth0Enabled()) return fail('auth0_unavailable');
+  // The user cancelled, or Auth0 refused (e.g. an Action denied access).
+  if (req.query.error) return fail('auth0_denied');
+  if (!flow || !sameString(flow.state, req.query.state) || typeof req.query.code !== 'string') {
+    return fail('auth0_failed');
+  }
+
+  try {
+    const tokens = await exchangeCode(req.query.code, flow.verifier);
+    const claims = await verifyAuth0Token(tokens.access_token);
+    if (!claims) return fail('auth0_failed');
+
+    const info = await fetchUserInfo(tokens.access_token);
+    const profile = await ensureAuth0Profile(tokens.access_token, claims.sub, info);
+
+    setSessionCookies(res, tokens, { remember: flow.remember === true, provider: 'auth0' });
+    res.redirect(safeNextPath(flow.next) || `/profile?u=${encodeURIComponent(profile.username)}`);
+  } catch (err) {
+    console.error('[GET /auth/auth0/callback]', err?.message || err);
+    fail('auth0_failed');
+  }
 });
 
 export default router;

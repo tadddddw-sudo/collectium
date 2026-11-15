@@ -4,6 +4,7 @@
   import { page } from '$app/stores';
   import { CollectiumAPI } from '$lib/apiClient.js';
   import { userProfile } from '$lib/stores.js';
+  import GoogleSignIn from '$lib/components/GoogleSignIn.svelte';
 
   let email = '';
   let password = '';
@@ -14,7 +15,19 @@
   let busy = false;
   let resending = false;
 
+  const AUTH0_ERRORS = {
+    auth0_failed: 'Google sign-in did not complete. Please try again.',
+    auth0_denied: 'Google sign-in was cancelled or not allowed for this account.',
+    auth0_unavailable: 'Google sign-in is not available right now.',
+  };
+
+  // Only same-site paths ("/x"), never "//host" or "https://host".
+  $: nextParam = $page.url.searchParams.get('next');
+  $: safeNext = nextParam && /^\/(?![/\\])/.test(nextParam) ? nextParam : '';
+
   onMount(() => {
+    const authError = $page.url.searchParams.get('error');
+    if (authError && AUTH0_ERRORS[authError]) error = AUTH0_ERRORS[authError];
     // Arriving from the confirmation email: /login?confirmed=1#access_token=…&type=signup
     const hash = new URLSearchParams(location.hash.slice(1));
     if (hash.get('error_code') === 'otp_expired') {
@@ -50,9 +63,6 @@
       const data = await CollectiumAPI.login(email, password, remember);
       const profile = data.profile ?? data.user;
       userProfile.set(profile);
-      const next = $page.url.searchParams.get('next');
-      // Only follow same-site paths ("/x"), never "//host" or "https://host".
-      const safeNext = next && /^\/(?![/\\])/.test(next) ? next : null;
       const destination = safeNext || `/profile?u=${encodeURIComponent(profile.username)}`;
       goto(destination, { replaceState: true });
     } catch (err) {
@@ -72,6 +82,8 @@
     <h1>Log in</h1>
     <p class="sub">Return to your binders and display cases.</p>
   </header>
+
+  <GoogleSignIn mode="login" {remember} next={safeNext} />
 
   <form on:submit={submit}>
     {#if info}

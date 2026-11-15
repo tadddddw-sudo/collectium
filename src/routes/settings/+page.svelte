@@ -16,6 +16,8 @@
 
   let confirmingDelete = false;
   let deletePassword = '';
+  // Accounts created through Auth0 / Google have no password to type.
+  $: usesPassword = me?.auth_provider !== 'auth0';
   let deleteError = '';
   let deleting = false;
 
@@ -36,7 +38,9 @@
     deleteError = '';
     deleting = true;
     try {
-      await CollectiumAPI.deleteAccount(deletePassword);
+      await CollectiumAPI.deleteAccount(
+        usesPassword ? deletePassword : { confirm_username: deletePassword }
+      );
       userProfile.set(null);
       goto('/', { replaceState: true });
     } catch (err) {
@@ -73,8 +77,13 @@
   }
 
   async function signOut() {
-    await CollectiumAPI.logout();
+    const redirect = await CollectiumAPI.logout();
     userProfile.set(null);
+    // Auth0 sessions also need a visit to Auth0 to end its single sign-on session.
+    if (redirect) {
+      location.href = redirect;
+      return;
+    }
     goto('/login');
   }
 </script>
@@ -156,16 +165,30 @@
               <p class="notice notice-error" role="alert">{deleteError}</p>
             {/if}
             <div class="field">
-              <label for="delete-password">Enter your password to confirm</label>
-              <input
-                class="input"
-                id="delete-password"
-                name="password"
-                type="password"
-                autocomplete="current-password"
-                required
-                bind:value={deletePassword}
-              />
+              <label for="delete-password">
+                {usesPassword ? 'Enter your password to confirm' : `Type your username (${me.username}) to confirm`}
+              </label>
+              {#if usesPassword}
+                <input
+                  class="input"
+                  id="delete-password"
+                  name="password"
+                  type="password"
+                  autocomplete="current-password"
+                  required
+                  bind:value={deletePassword}
+                />
+              {:else}
+                <input
+                  class="input"
+                  id="delete-password"
+                  name="username"
+                  type="text"
+                  autocomplete="off"
+                  required
+                  bind:value={deletePassword}
+                />
+              {/if}
             </div>
             <div class="actions">
               <button class="btn btn-danger btn-sm" type="submit" disabled={deleting || !deletePassword}>

@@ -2,6 +2,7 @@ import multer from 'multer';
 import crypto from 'crypto';
 import { supabase, createAuthClient } from '../supabaseClient.js';
 import { sendAuthError } from '../sessions.js';
+import { getUserFromToken } from '../authProviders.js';
 import { asyncRouter } from '../asyncRouter.js';
 import { uploadLimiter, writeLimiter } from '../rateLimits.js';
 import {
@@ -71,8 +72,8 @@ router.post('/', writeLimiter, async (req, res) => {
   if (!token) return res.status(401).json({ error: 'Unauthorized' });
 
   const userSupabase = createAuthClient(token);
-  const { data: { user }, error: authErr } = await userSupabase.auth.getUser();
-  if (authErr || !user) return res.status(401).json({ error: 'Invalid token' });
+  const user = await getUserFromToken(token);
+  if (!user) return res.status(401).json({ error: 'Invalid token' });
 
   const { title, description, type, layout_config, is_public } = req.body || {};
 
@@ -171,8 +172,8 @@ router.post('/:id/items', uploadLimiter, upload.single('image'), async (req, res
   }
 
   const userSupabase = createAuthClient(token);
-  const { data: { user }, error: authErr } = await userSupabase.auth.getUser();
-  if (authErr || !user) return res.status(401).json({ error: 'Invalid token' });
+  const user = await getUserFromToken(token);
+  if (!user) return res.status(401).json({ error: 'Invalid token' });
 
   // Upload only into a collection the caller owns, so nobody can attach items
   // to someone else's binder (or fill storage under someone else's collection id).

@@ -2,6 +2,7 @@ import multer from 'multer';
 import crypto from 'crypto';
 import { supabase, createAuthClient } from '../supabaseClient.js';
 import { sendAuthError } from '../sessions.js';
+import { getUserFromToken } from '../authProviders.js';
 import { asyncRouter } from '../asyncRouter.js';
 import { selectProfile, isUsernameTaken, isMissingColumn } from '../profileQueries.js';
 import { USERNAME_PATTERN, UUID_PATTERN, detectImageType, pickFields } from '../validation.js';
@@ -36,10 +37,9 @@ const PROFILE_FIELDS = {
 async function currentUser(req) {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return null;
-  const client = createAuthClient(token);
-  const { data, error } = await client.auth.getUser();
-  if (error || !data?.user) return null;
-  return { user: data.user, client };
+  const user = await getUserFromToken(token);
+  if (!user) return null;
+  return { user, client: createAuthClient(token) };
 }
 
 function loadOwnProfile(client, userId) {

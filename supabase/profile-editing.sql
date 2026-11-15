@@ -56,8 +56,17 @@ create policy "Users can update their own profile"
   on public.profiles
   for update
   to authenticated
-  using (id = (select auth.uid()))
-  with check (id = (select auth.uid()));
+  using (id = (select public.requesting_user_id()))
+  with check (id = (select public.requesting_user_id()));
+
+-- Auth0 users have no signup trigger, so the server inserts their profile row
+-- (as the user) on first sign-in. The row id must be the caller's own id.
+drop policy if exists "Users can create their own profile" on public.profiles;
+create policy "Users can create their own profile"
+  on public.profiles
+  for insert
+  to authenticated
+  with check (id = (select public.requesting_user_id()));
 
 -- 5. Storage: profile pictures and banners go to
 --    collectibles/<user_id>/profile/<file>. Let users upload only into their
@@ -69,7 +78,7 @@ create policy "Users can upload to their own folder"
   to authenticated
   with check (
     bucket_id = 'collectibles'
-    and (storage.foldername(name))[1] = (select auth.uid())::text
+    and (storage.foldername(name))[1] = (select public.requesting_user_id())
   );
 
 -- 6. Let PostgREST see the new columns straight away.
