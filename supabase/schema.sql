@@ -21,6 +21,20 @@ $$;
 
 grant execute on function public.requesting_user_id() to anon, authenticated;
 
+-- The caller's folder in the image bucket. Supabase Storage rejects keys with
+-- "|", so Auth0 ids ('google-oauth2|123') use '_' there. UUIDs are unchanged.
+-- Keep in sync with storageFolder() in validation.js.
+create or replace function public.requesting_user_folder()
+returns text
+language sql
+stable
+set search_path = ''
+as $$
+  select replace(public.requesting_user_id(), '|', '_')
+$$;
+
+grant execute on function public.requesting_user_folder() to anon, authenticated;
+
 -- 1. Tables ------------------------------------------------------------------
 
 -- One row per user. Supabase Auth users get theirs from the trigger in
@@ -219,7 +233,7 @@ create policy "Users can list their own images"
   to authenticated
   using (
     bucket_id = 'collectibles'
-    and (storage.foldername(name))[1] = (select public.requesting_user_id())
+    and (storage.foldername(name))[1] = (select public.requesting_user_folder())
   );
 
 -- 5. Let PostgREST see the changes straight away.

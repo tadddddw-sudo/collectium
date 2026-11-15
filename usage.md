@@ -431,6 +431,8 @@ user share the same tables: user ids are the token's `sub` stored as text
 1. **Database.** New project: run `schema.sql`, `profile-editing.sql`,
    `account-deletion.sql`. Existing project: back up, run
    `supabase/auth0-migration.sql`, then re-run those three files in that order.
+   If you migrated before `auth0-storage-fix.sql` existed, run that file too
+   (it lets Google users upload images).
 2. **Auth0 API.** Applications → APIs → Create API. Identifier (audience), e.g.
    `https://collectium-api`, signing algorithm **RS256**. Put it in
    `AUTH0_AUDIENCE`. Under its Settings, turn on **Allow Offline Access** so
